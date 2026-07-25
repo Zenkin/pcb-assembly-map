@@ -112,6 +112,41 @@ body.solder-mode .hotspot .resizeHandle { display:none !important; }
 .verificationExportActions { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:7px; }
 .verificationExportActions button { min-width:0; padding:7px 5px; background:#f8fafc; font-weight:700; }
 .verificationExportActions button:disabled { cursor:wait; opacity:.62; }
+.bomManagement { display:grid; gap:8px; margin:0 0 12px; padding:10px; border:1px solid #d7dde5; border-radius:8px; background:#fff; }
+.bomManagement > div:first-child { display:flex; align-items:center; justify-content:space-between; gap:8px; }
+.bomManagement strong { font-size:13px; }
+.bomManagement span { color:#667085; font-size:11px; }
+.bomManagementActions { display:grid; grid-template-columns:1fr 1fr; gap:7px; }
+.bomManagementActions button { min-width:0; padding:7px 5px; background:#f8fafc; font-weight:700; }
+.bomManagementActions button span { display:inline-grid; place-items:center; min-width:19px; height:19px; margin-left:3px; padding:0 5px; border-radius:999px; background:#e8edf3; color:#344054; }
+.dataModal[hidden] { display:none; }
+.dataModal { position:fixed; inset:0; z-index:380; display:grid; place-items:center; padding:20px; }
+.dataModalBackdrop { position:absolute; inset:0; background:rgba(15,23,42,.3); backdrop-filter:blur(10px); }
+.dataModalPanel { position:relative; width:min(850px,100%); max-height:calc(100vh - 40px); display:grid; grid-template-rows:auto minmax(0,1fr) auto; overflow:hidden; border:1px solid rgba(215,221,229,.9); border-radius:18px; background:#fff; box-shadow:0 28px 90px rgba(15,23,42,.24); }
+.dataModalHead { display:flex; align-items:center; justify-content:space-between; gap:12px; padding:16px 18px; border-bottom:1px solid #e4e8ee; background:#f8fafc; }
+.dataModalHead h2 { margin:0; font-size:22px; line-height:1.1; }
+.dataModalHead button { width:34px; height:34px; min-height:34px; padding:0; border:0; border-radius:9px; background:#eef2f6; color:#475467; font-size:22px; }
+.dataModalBody { min-height:0; padding:16px 18px; overflow:auto; }
+.dataSummary { padding:11px 12px; border:1px solid #d7dde5; border-radius:10px; background:#f8fafc; color:#475467; font-size:13px; line-height:1.45; white-space:pre-line; }
+.dataChangeList { display:grid; gap:6px; margin-top:12px; }
+.dataChange { display:grid; grid-template-columns:90px 150px minmax(0,1fr); gap:10px; align-items:start; padding:8px 10px; border:1px solid #e4e8ee; border-radius:9px; font-size:13px; }
+.dataChange strong { overflow-wrap:anywhere; }
+.dataChange span { color:#667085; }
+.dataChange.conflict { border-color:#e4c86b; background:#fffbea; }
+.dataChange.reset { border-color:#f2aaaa; background:#fff5f5; }
+.dataConfirm { display:flex !important; align-items:flex-start; gap:9px !important; margin-top:12px; padding:10px 12px; border:1px solid #e4c86b; border-radius:10px; background:#fff8e1; color:#725b16 !important; font-size:13px; line-height:1.4; }
+.dataConfirm input { width:18px; height:18px; min-height:18px; margin-top:1px; }
+.dataModalFooter { display:grid; grid-template-columns:auto minmax(0,1fr) auto auto; gap:8px; align-items:center; padding:12px 18px; border-top:1px solid #e4e8ee; background:#f8fafc; }
+.dataModalFooter button { min-width:112px; }
+.backupsLayout { display:grid; grid-template-columns:280px minmax(0,1fr); gap:14px; }
+.backupList { display:grid; align-content:start; gap:7px; }
+.backupItem { display:grid; gap:3px; width:100%; padding:9px 10px; text-align:left; background:#fff; border-radius:9px; }
+.backupItem strong { font-size:13px; }
+.backupItem span { color:#667085; font-size:12px; }
+.backupItem.active { border-color:#7c96b2; background:#f1f6fb; }
+.backupDetails { display:grid; align-content:start; gap:12px; }
+.backupDetails > label:not(.dataConfirm) { display:grid; gap:5px; color:#667085; font-size:13px; }
+.unplacedBadge { display:inline-flex; margin-left:5px; padding:2px 6px; border-radius:999px; background:#fff1cc; color:#725b16; font-size:11px; font-weight:700; }
 .grid2 { display:grid; grid-template-columns:1fr 1fr; gap:8px; }
 .checkPanel { background:#edf8f1; border:1px solid #97c6a6; border-radius:8px; padding:10px 12px; margin:10px 0 12px; font-size:13px; }
 .progressLine { height:12px; background:#dfe7df; border-radius:999px; overflow:hidden; margin-top:7px; }
@@ -319,5 +354,12 @@ body.editor-mode .card { cursor:default; }
   .verificationModal { padding:10px; }
   .verificationNumeric { grid-template-columns:1fr; }
   .verificationOverview { grid-template-columns:repeat(2,minmax(0,1fr)); }
+  .dataModal { padding:8px; }
+  .dataModalPanel { max-height:calc(100vh - 16px); border-radius:12px; }
+  .backupsLayout { grid-template-columns:1fr; }
+  .dataModalFooter { grid-template-columns:1fr 1fr; }
+  .dataModalFooter > span { display:none; }
+  .dataChange { grid-template-columns:70px minmax(0,1fr); }
+  .dataChange span:last-child { grid-column:1/-1; }
   .boardwrap { border-left:0; border-right:0; border-radius:0; height:auto; }
 }

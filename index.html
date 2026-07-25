@@ -117,6 +117,17 @@
         <button type="button" data-report-format="pdf">PDF</button>
       </div>
     </section>
+    <section class="bomManagement editorOnly" aria-label="BOM и резервные копии">
+      <div>
+        <strong>BOM и проверки</strong>
+        <span id="bomStatus">BOM ещё не обновлялась</span>
+      </div>
+      <div class="bomManagementActions">
+        <button id="importBomBtn" type="button">Обновить BOM</button>
+        <button id="openBackupsBtn" type="button">Резервные копии <span id="backupCount">0</span></button>
+      </div>
+      <input id="bomFileInput" class="nativeFileInput" type="file" accept=".csv,.tsv,.txt,text/csv,text/tab-separated-values">
+    </section>
 
     <section class="groupPanel editorOnly">
       <div class="sectionTitle">Этапы пайки</div>
@@ -161,6 +172,56 @@
       <button id="confirmCancelBtn" type="button">Отмена</button>
       <button id="confirmAcceptBtn" class="dangerAction" type="button">Удалить</button>
     </div>
+  </section>
+</div>
+<div class="dataModal" id="bomModal" hidden>
+  <div class="dataModalBackdrop" id="bomBackdrop"></div>
+  <section class="dataModalPanel" role="dialog" aria-modal="true" aria-labelledby="bomTitle">
+    <header class="dataModalHead">
+      <div><div class="eyebrow">Контролируемое обновление</div><h2 id="bomTitle">Предпросмотр BOM</h2></div>
+      <button id="bomCloseBtn" type="button" aria-label="Закрыть">×</button>
+    </header>
+    <div class="dataModalBody">
+      <div class="dataSummary" id="bomSummary"></div>
+      <div class="dataChangeList" id="bomChangeList"></div>
+      <label class="dataConfirm" id="bomConflictConfirm" hidden>
+        <input id="bomConflictCheckbox" type="checkbox">
+        <span>Подтверждаю конфликтные изменения и возможное удаление старых результатов проверки.</span>
+      </label>
+    </div>
+    <footer class="dataModalFooter">
+      <button id="bomExportOldBtn" type="button">Экспортировать старые результаты</button>
+      <span></span>
+      <button id="bomCancelBtn" type="button">Отмена</button>
+      <button id="bomApplyBtn" class="primaryBtn" type="button">Применить</button>
+    </footer>
+  </section>
+</div>
+<div class="dataModal" id="backupsModal" hidden>
+  <div class="dataModalBackdrop" id="backupsBackdrop"></div>
+  <section class="dataModalPanel" role="dialog" aria-modal="true" aria-labelledby="backupsTitle">
+    <header class="dataModalHead">
+      <div><div class="eyebrow">Снимки результатов проверки</div><h2 id="backupsTitle">Резервные копии</h2></div>
+      <button id="backupsCloseBtn" type="button" aria-label="Закрыть">×</button>
+    </header>
+    <div class="dataModalBody backupsLayout">
+      <div class="backupList" id="backupList"></div>
+      <section class="backupDetails">
+        <div id="backupComparison" class="dataSummary">Выберите резервную копию.</div>
+        <label>Компоненты для частичного восстановления
+          <input id="backupRefs" autocomplete="off" placeholder="Например: R1, C4">
+        </label>
+        <label class="dataConfirm">
+          <input id="backupOverwriteCheckbox" type="checkbox">
+          <span>Подтверждаю перезапись выбранных текущих результатов.</span>
+        </label>
+      </section>
+    </div>
+    <footer class="dataModalFooter">
+      <span></span><span></span>
+      <button id="restoreSelectedBtn" type="button">Восстановить выбранные</button>
+      <button id="restoreAllBtn" class="primaryBtn" type="button">Восстановить всё</button>
+    </footer>
   </section>
 </div>
 <div class="verificationModal" id="verificationModal" hidden>
@@ -253,6 +314,7 @@
 </div>
 <script src="js/verification.js"></script>
 <script src="js/report.js"></script>
+<script src="js/bom.js"></script>
 <script src="js/app.js"></script>
 </body>
 </html>

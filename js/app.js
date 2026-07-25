@@ -24,6 +24,13 @@ const {
 const {
   buildRows: buildVerificationReportRows
 } = window.SolderMapReport;
+const {
+  parseBom,
+  planUpdate: planBomUpdate,
+  createBackup: createVerificationBackup,
+  compareBackup: compareVerificationBackup,
+  restoreBackup: restoreVerificationBackup
+} = window.SolderMapBom;
 let projectHandle = null;
 let project = null;
 let currentSide = "TOP";
@@ -49,6 +56,9 @@ let lastImagePickerPath = "";
 let browserSearchTimer = null;
 let verificationKey = "";
 let contextComponentKey = "";
+let pendingBomPlan = null;
+let pendingBomSource = null;
+let selectedBackupId = "";
 
 const projectGate = document.getElementById("projectGate");
 const startOpenProjectBtn = document.getElementById("startOpenProjectBtn");
@@ -73,6 +83,30 @@ const verificationFilter = document.getElementById("verificationFilter");
 const verificationOverview = document.getElementById("verificationOverview");
 const verificationExportStatus = document.getElementById("verificationExportStatus");
 const verificationExportButtons = [...document.querySelectorAll("[data-report-format]")];
+const bomStatus = document.getElementById("bomStatus");
+const importBomBtn = document.getElementById("importBomBtn");
+const openBackupsBtn = document.getElementById("openBackupsBtn");
+const backupCount = document.getElementById("backupCount");
+const bomFileInput = document.getElementById("bomFileInput");
+const bomModal = document.getElementById("bomModal");
+const bomBackdrop = document.getElementById("bomBackdrop");
+const bomCloseBtn = document.getElementById("bomCloseBtn");
+const bomSummary = document.getElementById("bomSummary");
+const bomChangeList = document.getElementById("bomChangeList");
+const bomConflictConfirm = document.getElementById("bomConflictConfirm");
+const bomConflictCheckbox = document.getElementById("bomConflictCheckbox");
+const bomExportOldBtn = document.getElementById("bomExportOldBtn");
+const bomCancelBtn = document.getElementById("bomCancelBtn");
+const bomApplyBtn = document.getElementById("bomApplyBtn");
+const backupsModal = document.getElementById("backupsModal");
+const backupsBackdrop = document.getElementById("backupsBackdrop");
+const backupsCloseBtn = document.getElementById("backupsCloseBtn");
+const backupList = document.getElementById("backupList");
+const backupComparison = document.getElementById("backupComparison");
+const backupRefs = document.getElementById("backupRefs");
+const backupOverwriteCheckbox = document.getElementById("backupOverwriteCheckbox");
+const restoreSelectedBtn = document.getElementById("restoreSelectedBtn");
+const restoreAllBtn = document.getElementById("restoreAllBtn");
 const btnTop = document.getElementById("btnTop");
 const btnBottom = document.getElementById("btnBottom");
 const resetBtn = document.getElementById("resetBtn");
@@ -247,7 +281,7 @@ function ensureFileSystemAccess() {
 }
 function createBlankProject(name) {
   return {
-    version: 3,
+    version: 4,
     name: name || "PCB project",
     images: {TOP:null, BOTTOM:null},
     imageSizes: cloneData(DEFAULT_IMAGE_SIZES),
@@ -255,18 +289,37 @@ function createBlankProject(name) {
     groups: [],
     components: [],
     doneMap: {},
-    verificationMap: {}
+    verificationMap: {},
+    verificationBackups: [],
+    bomMetadata: null
   };
 }
 function normalizeProject(data, folderName) {
   const normalized = createBlankProject(data?.name || folderName);
   if (data && typeof data === "object") {
-    normalized.version = 3;
+    normalized.version = 4;
     normalized.images = Object.assign(normalized.images, data.images || {});
     normalized.imageSizes = Object.assign(normalized.imageSizes, data.imageSizes || {});
     normalized.components = Array.isArray(data.components) ? data.components : [];
     normalized.doneMap = data.doneMap || {};
     normalized.verificationMap = normalizeVerificationMap(data.verificationMap);
+    normalized.verificationBackups = Array.isArray(data.verificationBackups)
+      ? data.verificationBackups
+        .filter(item => item && typeof item === "object" && item.id && item.createdAt)
+        .slice(0, 10)
+        .map(item => ({
+          id:String(item.id),
+          createdAt:String(item.createdAt),
+          reason:String(item.reason || "Резервная копия"),
+          verificationMap:normalizeVerificationMap(item.verificationMap)
+        }))
+      : [];
+    normalized.bomMetadata = data.bomMetadata && typeof data.bomMetadata === "object"
+      ? {
+        fileName:String(data.bomMetadata.fileName || ""),
+        updatedAt:String(data.bomMetadata.updatedAt || "")
+      }
+      : null;
     normalized.groups = Array.isArray(data.groups) ? data.groups : [];
     normalized.stages = Array.isArray(data.stages) ? data.stages : [];
   }
@@ -535,7 +588,7 @@ function setSaveStatus(text) {
   projectStatus.title = projectStatus.textContent;
 }
 async function saveProjectNow() {
-  if (!projectHandle || !project) return;
+  if (!projectHandle || !project) return false;
   clearTimeout(saveTimer);
   saveTimer = null;
   try {
@@ -544,7 +597,7 @@ async function saveProjectNow() {
       await window.projectApi.writeProject(projectHandle.path, project);
       setSaveStatus("Автосохранено.");
       if (verificationActualError.hidden && verificationReferenceError.hidden) setVerificationSaveStatus("Сохранено", "saved");
-      return;
+      return true;
     }
     const fileHandle = await projectHandle.getFileHandle(PROJECT_FILE, {create:true});
     const writable = await fileHandle.createWritable();
@@ -552,10 +605,12 @@ async function saveProjectNow() {
     await writable.close();
     setSaveStatus("Автосохранено.");
     if (verificationActualError.hidden && verificationReferenceError.hidden) setVerificationSaveStatus("Сохранено", "saved");
+    return true;
   } catch(e) {
     console.error(e);
     setSaveStatus("Ошибка автосохранения.");
     setVerificationSaveStatus("Ошибка сохранения", "error");
+    return false;
   }
 }
 function scheduleSave() {
@@ -619,7 +674,10 @@ async function createProject() {
     selectedKey = "";
     undoStack = [];
     redoStack = [];
-    await saveProjectNow();
+    if (!await saveProjectNow()) {
+      notify("Не удалось сохранить новый проект.", "warning");
+      return;
+    }
     await loadProjectCards();
     await openWorkspace();
     newProjectName.value = "";
@@ -827,7 +885,7 @@ async function exportVerificationReport(format) {
   verificationExportStatus.className = "";
   verificationExportStatus.textContent = "Подготовка...";
   try {
-    await saveProjectNow();
+    if (!await saveProjectNow()) throw new Error("Project save failed before export.");
     const result = await window.projectApi.exportVerificationReport({
       format,
       projectName:project.name,
@@ -851,10 +909,234 @@ async function exportVerificationReport(format) {
     });
   }
 }
+function formatBackupDate(value) {
+  const date = new Date(value);
+  if (!Number.isFinite(date.getTime())) return "Дата неизвестна";
+  return new Intl.DateTimeFormat("ru-RU", {
+    dateStyle:"short",
+    timeStyle:"medium"
+  }).format(date);
+}
+function renderBomState() {
+  const backups = project.verificationBackups || [];
+  backupCount.textContent = String(backups.length);
+  const metadata = project.bomMetadata;
+  bomStatus.textContent = metadata?.updatedAt
+    ? `${metadata.fileName || "BOM"} · ${formatBackupDate(metadata.updatedAt)}`
+    : "BOM ещё не обновлялась";
+}
+function closeBomModal() {
+  bomModal.hidden = true;
+  pendingBomPlan = null;
+  pendingBomSource = null;
+  bomConflictCheckbox.checked = false;
+}
+function bomChangeLabel(kind) {
+  return ({
+    added:"Добавлен",
+    removed:"Удалён",
+    type:"Изменён тип",
+    value:"Изменён номинал",
+    tolerance:"Изменён допуск",
+    type_and_value:"Тип и номинал",
+    unchanged:"Без изменений"
+  })[kind] || kind;
+}
+function bomItemText(item) {
+  if (!item) return "—";
+  const tolerance = item.tolerance === null || item.tolerance === undefined ? "" : ` ±${item.tolerance} %`;
+  return `${item.type || "Тип не указан"} · ${item.value || "номинал не указан"}${tolerance}`;
+}
+function showBomPreview(source) {
+  const parsed = parseBom(source.text);
+  const plan = planBomUpdate(project.components, parsed.entries, project.verificationMap);
+  pendingBomPlan = plan;
+  pendingBomSource = {name:String(source.name || "BOM.csv")};
+  const counts = plan.changes.reduce((result, change) => {
+    result[change.kind] = (result[change.kind] || 0) + 1;
+    return result;
+  }, {});
+  const affected = plan.changes.filter(change => change.kind !== "unchanged").length;
+  bomSummary.textContent = [
+    `Файл: ${pendingBomSource.name}`,
+    `Позиций: ${parsed.entries.length}. Затронуто: ${affected}. Конфликтов: ${plan.conflicts.length}.`,
+    `Новые: ${counts.added || 0}; удаляемые: ${counts.removed || 0}; сброс проверок: ${plan.resetRefs.length}.`,
+    plan.conflicts.some(conflict => conflict.kind === "duplicate")
+      ? "Дубликаты нужно исправить в исходной BOM до применения."
+      : ""
+  ].filter(Boolean).join("\n");
+  const conflicts = new Set(plan.conflicts.map(item => `${item.ref}:${item.kind}`));
+  bomChangeList.innerHTML = plan.changes.map(change => {
+    const conflict = conflicts.has(`${change.ref}:${change.kind}`) || plan.conflicts.some(item => item.ref === change.ref);
+    const reset = plan.resetRefs.includes(change.ref);
+    return `<div class="dataChange ${conflict ? "conflict" : ""} ${reset ? "reset" : ""}">
+      <strong>${escapeHtml(change.ref)}</strong>
+      <span>${escapeHtml(bomChangeLabel(change.kind))}</span>
+      <span>${escapeHtml(change.before || change.after
+        ? `${bomItemText(change.before)} → ${bomItemText(change.after)}. ${change.label}`
+        : change.label)}</span>
+    </div>`;
+  }).join("") || `<div class="emptyLine">Изменений нет.</div>`;
+  if (plan.conflicts.length) {
+    bomChangeList.insertAdjacentHTML("afterbegin", plan.conflicts
+      .filter(conflict => conflict.kind === "duplicate")
+      .map(conflict => `<div class="dataChange conflict"><strong>${escapeHtml(conflict.ref)}</strong><span>Конфликт</span><span>${escapeHtml(conflict.label)}</span></div>`)
+      .join(""));
+  }
+  bomConflictConfirm.hidden = plan.conflicts.length === 0;
+  bomConflictCheckbox.checked = false;
+  bomApplyBtn.disabled = !plan.changed || plan.conflicts.some(conflict => conflict.kind === "duplicate");
+  bomModal.hidden = false;
+  bomApplyBtn.focus();
+}
+async function readBomFromBrowserFile(file) {
+  if (!file) return null;
+  if (file.size > 10 * 1024 * 1024) throw new Error("Файл BOM больше 10 МБ.");
+  return {name:file.name, text:await file.text()};
+}
+async function selectBom() {
+  try {
+    if (window.projectApi?.selectBomFile) {
+      const source = await window.projectApi.selectBomFile();
+      if (source) showBomPreview(source);
+      return;
+    }
+    bomFileInput.click();
+  } catch (error) {
+    console.error(error);
+    notify(error?.message || "Не удалось прочитать BOM.", "warning");
+  }
+}
+async function applyBomUpdate() {
+  if (!pendingBomPlan || !pendingBomPlan.changed) return;
+  if (pendingBomPlan.conflicts.some(conflict => conflict.kind === "duplicate")) {
+    notify("Сначала устраните дубликаты обозначений в BOM.", "warning");
+    return;
+  }
+  if (pendingBomPlan.conflicts.length && !bomConflictCheckbox.checked) {
+    notify("Подтвердите конфликтные изменения.", "warning");
+    return;
+  }
+  pushUndoState();
+  const backupResult = createVerificationBackup(
+    project.verificationBackups,
+    project.verificationMap,
+    `Перед обновлением BOM: ${pendingBomSource?.name || "BOM"}`
+  );
+  project.verificationBackups = backupResult.backups;
+  project.components = pendingBomPlan.nextComponents;
+  project.verificationMap = normalizeVerificationMap(pendingBomPlan.nextVerificationMap);
+  const validKeys = new Set(project.components.map(compKey));
+  project.doneMap = Object.fromEntries(Object.entries(project.doneMap || {}).filter(([key]) => validKeys.has(key)));
+  project.bomMetadata = {
+    fileName:pendingBomSource?.name || "BOM",
+    updatedAt:new Date().toISOString()
+  };
+  selectedKey = "";
+  if (!await saveProjectNow()) {
+    closeBomModal();
+    renderAll();
+    notify("BOM применена в памяти, но проект не удалось сохранить.", "warning");
+    return;
+  }
+  closeBomModal();
+  renderAll();
+  notify(`BOM обновлена. Резервных копий: ${project.verificationBackups.length}.`, "success");
+}
+function backupRefsValue() {
+  return String(backupRefs.value || "")
+    .split(/[\s,;]+/)
+    .map(ref => ref.trim().toUpperCase())
+    .filter(Boolean);
+}
+function selectedBackup() {
+  return (project.verificationBackups || []).find(item => item.id === selectedBackupId) || null;
+}
+function renderBackupComparison() {
+  const backup = selectedBackup();
+  if (!backup) {
+    backupComparison.textContent = "Выберите резервную копию.";
+    restoreAllBtn.disabled = true;
+    restoreSelectedBtn.disabled = true;
+    return;
+  }
+  const refs = backupRefsValue();
+  const changes = compareVerificationBackup(project.verificationMap, backup.verificationMap, refs.length ? refs : null);
+  const changedRefs = [...new Set(changes.map(change => change.ref))];
+  backupComparison.textContent = [
+    formatBackupDate(backup.createdAt),
+    backup.reason,
+    refs.length
+      ? `Для выбранных обозначений будет изменено записей: ${changes.length}.`
+      : `При полном восстановлении будет изменено записей: ${changes.length}.`,
+    changedRefs.length
+      ? `Отличаются: ${changedRefs.slice(0, 20).join(", ")}${changedRefs.length > 20 ? "…" : ""}`
+      : "Сохранённые и текущие данные совпадают."
+  ].join("\n");
+  restoreAllBtn.disabled = changes.length === 0;
+  restoreSelectedBtn.disabled = refs.length === 0 || changes.length === 0;
+}
+function renderBackups() {
+  const backups = project.verificationBackups || [];
+  if (!backups.some(item => item.id === selectedBackupId)) selectedBackupId = backups[0]?.id || "";
+  backupList.innerHTML = backups.length
+    ? backups.map(item => `<button class="backupItem ${item.id === selectedBackupId ? "active" : ""}" type="button" data-backup-id="${escapeHtml(item.id)}">
+        <strong>${escapeHtml(formatBackupDate(item.createdAt))}</strong>
+        <span>${escapeHtml(item.reason)}</span>
+      </button>`).join("")
+    : `<div class="emptyLine">Резервных копий пока нет.</div>`;
+  renderBackupComparison();
+}
+function openBackups() {
+  backupRefs.value = "";
+  backupOverwriteCheckbox.checked = false;
+  selectedBackupId = project.verificationBackups?.[0]?.id || "";
+  renderBackups();
+  backupsModal.hidden = false;
+}
+function closeBackups() {
+  backupsModal.hidden = true;
+  selectedBackupId = "";
+  backupOverwriteCheckbox.checked = false;
+}
+async function restoreFromSelectedBackup(partial) {
+  const backup = selectedBackup();
+  if (!backup) return;
+  const refs = partial ? backupRefsValue() : null;
+  if (partial && !refs.length) {
+    notify("Введите позиционные обозначения для частичного восстановления.", "warning");
+    return;
+  }
+  if (!backupOverwriteCheckbox.checked) {
+    notify("Подтвердите перезапись текущих результатов.", "warning");
+    return;
+  }
+  const changes = compareVerificationBackup(project.verificationMap, backup.verificationMap, refs);
+  if (!changes.length) return;
+  const currentBackup = createVerificationBackup(
+    project.verificationBackups,
+    project.verificationMap,
+    `Перед восстановлением копии от ${formatBackupDate(backup.createdAt)}`
+  );
+  pushUndoState();
+  project.verificationBackups = currentBackup.backups;
+  project.verificationMap = normalizeVerificationMap(
+    restoreVerificationBackup(project.verificationMap, backup.verificationMap, refs)
+  );
+  if (!await saveProjectNow()) {
+    closeBackups();
+    renderAll();
+    notify("Данные восстановлены в памяти, но проект не удалось сохранить.", "warning");
+    return;
+  }
+  closeBackups();
+  renderAll();
+  notify(partial ? `Восстановлено компонентов: ${refs.length}.` : "Резервная копия восстановлена.", "success");
+}
 function renderHotspots() {
   board.querySelectorAll(".hotspot").forEach(e => e.remove());
   if (!project) return;
-  project.components.filter(c => c.side === currentSide && matches(c)).forEach(c => {
+  project.components.filter(c => !c.unplaced && c.side === currentSide && matches(c)).forEach(c => {
     const d = document.createElement("div");
     d.className = "hotspot stage" + c.stage + (isDone(c) ? " done" : "") + (selectedKey === compKey(c) ? " active" : "");
     d.dataset.ref = c.ref;
@@ -940,7 +1222,7 @@ function renderList() {
       const record = verificationRecord(c);
       const control = verificationControl(c, record);
       const actualValue = record.actualValue === null || record.actualValue === undefined ? "" : `${record.actualValue} ${record.unit || ""}`.trim();
-      card.innerHTML = `<div class="ref">${escapeHtml(c.ref)}</div><div class="meta">${escapeHtml(c.side)} · ${escapeHtml(c.group || "Без группы")} · ${escapeHtml(c.value || "Без номинала")}</div><div class="verificationSummaryRow"><div class="verificationSummary ${isVerified(c) ? "verified" : ""}">${isVerified(c) ? "✓ Проверен" : "○ Не проверен"}${actualValue ? ` · ${escapeHtml(actualValue)}` : ""}</div><span class="verificationControlBadge ${control.status}">${verificationStatusLabel(control.status)}</span></div>${record.comment ? `<div class="verificationComment">${escapeHtml(record.comment)}</div>` : ""}<div class="note">${escapeHtml(c.note)}</div><button class="verificationBtn" type="button">Проверка</button>${solderButton}`;
+      card.innerHTML = `<div class="ref">${escapeHtml(c.ref)}${c.unplaced ? `<span class="unplacedBadge">Не размещён</span>` : ""}</div><div class="meta">${escapeHtml(c.side)} · ${escapeHtml(c.group || "Без группы")} · ${escapeHtml(c.value || "Без номинала")}</div><div class="verificationSummaryRow"><div class="verificationSummary ${isVerified(c) ? "verified" : ""}">${isVerified(c) ? "✓ Проверен" : "○ Не проверен"}${actualValue ? ` · ${escapeHtml(actualValue)}` : ""}</div><span class="verificationControlBadge ${control.status}">${verificationStatusLabel(control.status)}</span></div>${record.comment ? `<div class="verificationComment">${escapeHtml(record.comment)}</div>` : ""}<div class="note">${escapeHtml(c.note)}</div><button class="verificationBtn" type="button">Проверка</button>${solderButton}`;
       card.addEventListener("click", ev => {
         if (ev.target.closest("button")) return;
         selectedKey = compKey(c);
@@ -965,6 +1247,7 @@ function renderList() {
 function renderAll() {
   if (!project) return;
   renderFilePickers();
+  renderBomState();
   renderStages();
   renderGroups();
   renderVerificationOverview();
@@ -1055,6 +1338,21 @@ function addComponentFromBox(a, b) {
   const w = Math.max(MIN_COMPONENT_SIZE, rawW);
   const h = Math.max(MIN_COMPONENT_SIZE, rawH);
   pushUndoState();
+  const selected = componentByKey(selectedKey);
+  if (selected?.unplaced) {
+    selected.side = currentSide;
+    selected.x = x;
+    selected.y = y;
+    selected.w = w;
+    selected.h = h;
+    delete selected.unplaced;
+    selectedKey = compKey(selected);
+    scheduleSave();
+    renderAll();
+    selectRef(selected.ref, selected.side);
+    notify(`${selected.ref} размещён на плате.`, "success");
+    return;
+  }
   const c = {ref: nextRef(currentSide), side: currentSide, stage: project.stages[0]?.id || "", group: "", value: "", x, y, w, h, note: ""};
   project.components.push(c);
   selectedKey = compKey(c);
@@ -1339,6 +1637,11 @@ function canStartSoldering() {
     notify("Для перехода к пайке добавьте хотя бы один компонент.", "warning");
     return false;
   }
+  const unplaced = project.components.filter(component => component.unplaced);
+  if (unplaced.length) {
+    notify(`Сначала разместите компоненты из BOM: ${unplaced.slice(0, 4).map(component => component.ref).join(", ")}${unplaced.length > 4 ? "…" : ""}.`, "warning");
+    return false;
+  }
   if (!project.stages.length) {
     notify("Для перехода к пайке создайте хотя бы один этап пайки.", "warning");
     return false;
@@ -1401,7 +1704,10 @@ windowCloseBtn.addEventListener("click", () => window.windowControls?.close());
 backToProjectsBtn.addEventListener("click", closeWorkspaceToProjects);
 saveGoSolderBtn.addEventListener("click", async () => {
   if (!canStartSoldering()) return;
-  await saveProjectNow();
+  if (!await saveProjectNow()) {
+    notify("Не удалось сохранить проект перед переходом к пайке.", "warning");
+    return;
+  }
   setMode("solder");
 });
 backToEditorBtn.addEventListener("click", () => setMode("editor"));
@@ -1505,6 +1811,38 @@ groupList.addEventListener("click", ev => {
 verificationExportButtons.forEach(button => {
   button.addEventListener("click", () => exportVerificationReport(button.dataset.reportFormat));
 });
+importBomBtn.addEventListener("click", selectBom);
+bomFileInput.addEventListener("change", async () => {
+  try {
+    const source = await readBomFromBrowserFile(bomFileInput.files[0]);
+    bomFileInput.value = "";
+    if (source) showBomPreview(source);
+  } catch (error) {
+    console.error(error);
+    notify(error?.message || "Не удалось прочитать BOM.", "warning");
+  }
+});
+bomCloseBtn.addEventListener("click", closeBomModal);
+bomCancelBtn.addEventListener("click", closeBomModal);
+bomBackdrop.addEventListener("click", closeBomModal);
+bomApplyBtn.addEventListener("click", applyBomUpdate);
+bomExportOldBtn.addEventListener("click", () => exportVerificationReport("xlsx"));
+openBackupsBtn.addEventListener("click", openBackups);
+backupsCloseBtn.addEventListener("click", closeBackups);
+backupsBackdrop.addEventListener("click", closeBackups);
+backupList.addEventListener("click", event => {
+  const item = event.target.closest("[data-backup-id]");
+  if (!item) return;
+  selectedBackupId = item.dataset.backupId;
+  backupOverwriteCheckbox.checked = false;
+  renderBackups();
+});
+backupRefs.addEventListener("input", () => {
+  backupOverwriteCheckbox.checked = false;
+  renderBackupComparison();
+});
+restoreSelectedBtn.addEventListener("click", () => restoreFromSelectedBackup(true));
+restoreAllBtn.addEventListener("click", () => restoreFromSelectedBackup(false));
 componentInspector.addEventListener("submit", ev => {
   if (!ev.target.classList.contains("inspectorForm")) return;
   ev.preventDefault();
@@ -1592,6 +1930,16 @@ document.getElementById("clearVisibleDone").addEventListener("click", () => {
   renderAll();
 });
 window.addEventListener("keydown", ev => {
+  if (ev.key === "Escape" && !bomModal.hidden) {
+    ev.preventDefault();
+    closeBomModal();
+    return;
+  }
+  if (ev.key === "Escape" && !backupsModal.hidden) {
+    ev.preventDefault();
+    closeBackups();
+    return;
+  }
   if (ev.key === "Escape" && !verificationModal.hidden) {
     ev.preventDefault();
     closeVerification();
