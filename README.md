@@ -18,6 +18,10 @@ The editor lets an operator:
   state, and review the board-wide verification summary;
 - export all component verification results to printable PDF, UTF-8 CSV, or
   filterable Excel `.xlsx`;
+- import or update a CSV/TSV BOM with a preview of affected components,
+  conflict confirmation, and selective reset of stale verification data;
+- keep the ten latest verification backups and restore either the complete
+  snapshot or selected reference designators;
 - keep the project data and source images together in a local folder.
 
 ## Requirements
@@ -36,6 +40,23 @@ npm start
 Application projects are stored in `SolderMap Projects` inside the current
 user's Documents directory. Each project contains a `project.json` file and
 its PCB images.
+
+## BOM format
+
+Use a UTF-8 CSV, TSV, or semicolon-delimited text file. The required column is
+the reference designator; value, component type, percentage tolerance, and
+side are optional. Russian and English headers are recognized, for example:
+
+```csv
+Обозначение;Номинал;Тип;Допуск %;Сторона
+R1 R2;100 Ом;Резистор;5;TOP
+C1-C3;0,1 мкФ;Конденсатор;;BOTTOM
+```
+
+Grouped references and simple ranges are expanded into individual components.
+New components are marked as unplaced: select one in the list, enable
+`Добавить элементы`, and draw its area on the board. Duplicate designators
+must be corrected in the source BOM before the update can be applied.
 
 ## Build
 
@@ -67,6 +88,7 @@ index.html       Renderer markup
 css/styles.css   Application styles
 js/app.js        Renderer state and interactions
 js/report.js     Verification report rows and CSV/XLSX serialization
+js/bom.js        BOM parsing, update planning, backups and restoration
 preload.js       Safe renderer-to-main IPC bridge
 main.js          Electron lifecycle, filesystem and project IPC
 assets/          Application icons
