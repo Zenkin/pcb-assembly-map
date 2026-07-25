@@ -4,7 +4,7 @@ These rules apply to agent-assisted and manual development.
 
 ## Repository
 
-- Repository: `Zenkin/pcb-assembly-map`
+- Repository: `Zenkin/solder-map`
 - Stable branch: `main`
 - Do not commit directly to `main` for normal feature or fix work.
 
