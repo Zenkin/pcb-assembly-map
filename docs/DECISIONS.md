@@ -43,10 +43,11 @@ access. Filesystem access remains in `main.js`.
 - Backward compatibility with existing `project.json` files is required.
 - A breaking data-format change requires an explicit migration decision.
 
-Project format version 3 extends version 2 with an optional
-`verificationMap` object. Existing version 2 projects are upgraded in memory
-when opened; missing verification data is interpreted as an empty map. The
-extension does not remove or reinterpret existing fields.
+Project format version 4 extends version 3 with optional
+`verificationBackups` and `bomMetadata` fields. Existing version 2 and 3
+projects are upgraded in memory when opened; missing verification data,
+backups, and BOM metadata are interpreted as empty. The extension does not
+remove or reinterpret existing fields.
 
 ## D-004 — Distribution artifacts
 
@@ -86,3 +87,25 @@ Renderer-provided paths are not trusted implicitly.
   a repeated table header and numbered pages.
 - The main process allowlists formats and report fields and limits row, cell,
   and total payload size before writing a file.
+
+## D-007 — BOM update and verification backups
+
+**Status:** accepted
+
+- BOM input is a local UTF-8 CSV, TSV, or delimited text file selected through
+  an allowlisted preload method; the renderer receives only its name and text.
+- Components are matched primarily by case-insensitive reference designator.
+- Equivalent resistor and capacitor values are compared after unit
+  normalization.
+- A changed type or nominal resets only the affected verification records;
+  unchanged records and soldering status remain independent.
+- Removed references and simultaneous type/nominal changes require explicit
+  confirmation. Duplicate incoming references block the update until the
+  source BOM is corrected.
+- New BOM references are stored as unplaced components and acquire board
+  geometry when the operator selects them and draws their area.
+- Before an applied BOM update or restoration, the renderer stores a
+  verification snapshot in `project.json`; only the ten newest snapshots are
+  retained.
+- Restoration can replace the complete verification map or only explicitly
+  selected reference designators.
