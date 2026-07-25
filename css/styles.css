@@ -119,6 +119,12 @@ body.solder-mode .hotspot .resizeHandle { display:none !important; }
 .bomManagementActions { display:grid; grid-template-columns:1fr 1fr; gap:7px; }
 .bomManagementActions button { min-width:0; padding:7px 5px; background:#f8fafc; font-weight:700; }
 .bomManagementActions button span { display:inline-grid; place-items:center; min-width:19px; height:19px; margin-left:3px; padding:0 5px; border-radius:999px; background:#e8edf3; color:#344054; }
+.matchingManagement { display:grid; gap:8px; margin:0 0 12px; padding:10px; border:1px solid #d7dde5; border-radius:8px; background:#fff; }
+.matchingManagement > div { display:flex; align-items:center; justify-content:space-between; gap:8px; }
+.matchingManagement strong { font-size:13px; }
+.matchingManagement span { min-width:0; overflow:hidden; color:#667085; font-size:11px; text-align:right; text-overflow:ellipsis; white-space:nowrap; }
+.matchingManagement span.error { color:#9b1c1c; }
+.matchingManagement button { width:100%; min-width:0; padding:7px 5px; background:#f8fafc; font-weight:700; }
 .dataModal[hidden] { display:none; }
 .dataModal { position:fixed; inset:0; z-index:380; display:grid; place-items:center; padding:20px; }
 .dataModalBackdrop { position:absolute; inset:0; background:rgba(15,23,42,.3); backdrop-filter:blur(10px); }
@@ -138,6 +144,24 @@ body.solder-mode .hotspot .resizeHandle { display:none !important; }
 .dataConfirm input { width:18px; height:18px; min-height:18px; margin-top:1px; }
 .dataModalFooter { display:grid; grid-template-columns:auto minmax(0,1fr) auto auto; gap:8px; align-items:center; padding:12px 18px; border-top:1px solid #e4e8ee; background:#f8fafc; }
 .dataModalFooter button { min-width:112px; }
+.matchingPanel { width:min(980px,100%); }
+.matchingSummary { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:8px; }
+.matchingSummaryItem { display:grid; gap:3px; padding:10px 11px; border:1px solid #d7dde5; border-radius:10px; background:#f8fafc; }
+.matchingSummaryItem strong { font-size:20px; line-height:1; }
+.matchingSummaryItem span { color:#667085; font-size:12px; }
+.matchingSummaryItem.matched { border-color:#b9dbc7; background:#f0faf4; color:#17613d; }
+.matchingSummaryItem.ambiguous { border-color:#e4c86b; background:#fffbea; color:#725b16; }
+.matchingSummaryItem.unmatched { border-color:#efb5b5; background:#fff3f3; color:#9b1c1c; }
+.matchingTableWrap { margin-top:12px; overflow:auto; border:1px solid #d7dde5; border-radius:10px; }
+.matchingTable { width:100%; border-collapse:collapse; font-size:13px; }
+.matchingTable th,.matchingTable td { padding:9px 10px; border-bottom:1px solid #e4e8ee; text-align:left; vertical-align:top; }
+.matchingTable th { position:sticky; top:0; z-index:1; background:#f8fafc; color:#475467; font-size:12px; }
+.matchingTable tr:last-child td { border-bottom:0; }
+.matchingStatusBadge { display:inline-flex; align-items:center; min-height:24px; padding:3px 8px; border-radius:999px; background:#eef2f6; color:#475467; font-size:12px; font-weight:800; }
+.matchingStatusBadge.matched { background:#d9f2e3; color:#17613d; }
+.matchingStatusBadge.uncertain,.matchingStatusBadge.ambiguous { background:#fff1cc; color:#725b16; }
+.matchingStatusBadge.unmatched { background:#fee2e2; color:#9b1c1c; }
+#matchingDetails { color:#667085; font-size:12px; }
 .backupsLayout { display:grid; grid-template-columns:280px minmax(0,1fr); gap:14px; }
 .backupList { display:grid; align-content:start; gap:7px; }
 .backupItem { display:grid; gap:3px; width:100%; padding:9px 10px; text-align:left; background:#fff; border-radius:9px; }
@@ -354,6 +378,7 @@ body.editor-mode .card { cursor:default; }
   .verificationModal { padding:10px; }
   .verificationNumeric { grid-template-columns:1fr; }
   .verificationOverview { grid-template-columns:repeat(2,minmax(0,1fr)); }
+  .matchingSummary { grid-template-columns:repeat(2,minmax(0,1fr)); }
   .dataModal { padding:8px; }
   .dataModalPanel { max-height:calc(100vh - 16px); border-radius:12px; }
   .backupsLayout { grid-template-columns:1fr; }
