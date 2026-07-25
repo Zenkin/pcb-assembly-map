@@ -126,3 +126,23 @@ Renderer-provided paths are not trusted implicitly.
   workflows.
 - Perspective correction and applying results to `project.json` are separate
   future tasks.
+
+## D-009 — Applying automatic matching results
+
+**Status:** accepted
+
+- Matching results are converted into a versioned application plan before any
+  project component is changed.
+- Only unambiguous exact and acceptable matches with known detected geometry
+  are eligible for automatic application.
+- Uncertain, ambiguous, unmatched, duplicate-reference, reused-component,
+  reused-footprint, and out-of-image results are skipped with explicit
+  reasons.
+- Found-footprint pad bounds are transformed by the matching side's accepted
+  calibration and rounded outward to an integer source-image rectangle.
+- Proposed rectangles are rejected rather than clipped when they cross an
+  image boundary.
+- Applying a plan preserves non-geometry component fields and rejects stale
+  previews when component identity or geometry has changed.
+- User-interface preview, calibration entry, confirmation, and project saving
+  remain a separate renderer workflow.

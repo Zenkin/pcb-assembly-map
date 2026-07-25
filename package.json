@@ -6,7 +6,7 @@
   "private": true,
   "scripts": {
     "start": "electron .",
-    "check": "node --check main.js && node --check preload.js && node --check js/verification.js && node --check js/matching-geometry.js && node --check js/automatic-matching.js && node --check js/matching-session.js && node --check js/matching-format.js && node --check js/matching-view.js && node --check js/matching-calibration.js && node --check js/report.js && node --check js/bom.js && node --check js/app.js && node --test",
+    "check": "node --check main.js && node --check preload.js && node --check js/verification.js && node --check js/matching-geometry.js && node --check js/automatic-matching.js && node --check js/matching-session.js && node --check js/matching-format.js && node --check js/matching-view.js && node --check js/matching-calibration.js && node --check js/matching-application.js && node --check js/report.js && node --check js/bom.js && node --check js/app.js && node --test",
     "build": "electron-builder --win",
     "build:linux": "electron-builder --linux",
     "build:linux:appimage": "electron-builder --linux AppImage",
