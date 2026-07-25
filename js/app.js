@@ -11,6 +11,11 @@ const MAX_REF_NAME = 24;
 const {
   unitsForRef: verificationUnitsForRef,
   parseNumber: parseVerificationNumber,
+  parseTolerance: parseVerificationTolerance,
+  parseNominal: parseVerificationNominal,
+  calculateControl: calculateVerificationControl,
+  formatNumber: formatVerificationNumber,
+  formatBaseValue: formatVerificationBaseValue,
   normalizeRecord: normalizeVerificationRecord,
   normalizeMap: normalizeVerificationMap
 } = window.SolderMapVerification;
@@ -104,6 +109,11 @@ const verificationTitle = document.getElementById("verificationTitle");
 const verificationCloseBtn = document.getElementById("verificationCloseBtn");
 const verificationForm = document.getElementById("verificationForm");
 const verificationBomValue = document.getElementById("verificationBomValue");
+const verificationTolerance = document.getElementById("verificationTolerance");
+const verificationManualReference = document.getElementById("verificationManualReference");
+const verificationReferenceValue = document.getElementById("verificationReferenceValue");
+const verificationReferenceError = document.getElementById("verificationReferenceError");
+const verificationReferenceUnit = document.getElementById("verificationReferenceUnit");
 const verificationNumeric = document.getElementById("verificationNumeric");
 const verificationUnsupported = document.getElementById("verificationUnsupported");
 const verificationActualValue = document.getElementById("verificationActualValue");
@@ -111,6 +121,7 @@ const verificationActualError = document.getElementById("verificationActualError
 const verificationUnit = document.getElementById("verificationUnit");
 const verificationComment = document.getElementById("verificationComment");
 const verificationChecked = document.getElementById("verificationChecked");
+const verificationResult = document.getElementById("verificationResult");
 const verificationSaveStatus = document.getElementById("verificationSaveStatus");
 const verificationDoneBtn = document.getElementById("verificationDoneBtn");
 const componentContextMenu = document.getElementById("componentContextMenu");
@@ -287,6 +298,68 @@ function verificationRecord(c) {
 function isVerified(c) {
   return verificationRecord(c).checked === true;
 }
+function componentTolerance(c) {
+  const explicit = parseVerificationTolerance(c?.tolerance, true);
+  return explicit ?? parseVerificationTolerance(c?.value);
+}
+function componentReference(c, record = verificationRecord(c)) {
+  const parsed = parseVerificationNominal(c?.value, c?.ref);
+  if (parsed.valid) return {...parsed, source:"bom"};
+  const baseValue = record.referenceValue === null || record.referenceValue === undefined
+    ? null
+    : parseVerificationNominal(`${record.referenceValue} ${record.referenceUnit}`, c?.ref).baseValue;
+  if (baseValue !== null && Number.isFinite(baseValue)) {
+    return {
+      valid:true,
+      value:record.referenceValue,
+      unit:record.referenceUnit,
+      baseValue,
+      source:"manual"
+    };
+  }
+  return {valid:false, value:null, unit:"", baseValue:null, source:"missing"};
+}
+function verificationControl(c, record = verificationRecord(c)) {
+  const reference = componentReference(c, record);
+  return calculateVerificationControl({
+    actualValue:record.actualValue,
+    actualUnit:record.unit,
+    referenceValue:reference.valid ? reference.value : null,
+    referenceUnit:reference.valid ? reference.unit : "",
+    tolerancePercent:componentTolerance(c)
+  });
+}
+function renderVerificationResult(c, record = verificationRecord(c)) {
+  const control = verificationControl(c, record);
+  const labels = {
+    no_measurement:"Нет измерения",
+    not_comparable:"Сравнение невозможно",
+    no_tolerance:"Без допуска",
+    in_tolerance:"В допуске",
+    out_of_tolerance:"Вне допуска"
+  };
+  const details = [];
+  if (Number.isFinite(control.deltaBase)) {
+    const sign = control.deltaBase > 0 ? "+" : "";
+    details.push(`<span>Отклонение: <strong>${sign}${escapeHtml(formatVerificationBaseValue(control.deltaBase, c.ref, record.unit))}</strong></span>`);
+  }
+  if (Number.isFinite(control.percentDelta)) {
+    const sign = control.percentDelta > 0 ? "+" : "";
+    details.push(`<span>В процентах: <strong>${sign}${escapeHtml(formatVerificationNumber(control.percentDelta))} %</strong></span>`);
+  }
+  if (Number.isFinite(control.lowerBase) && Number.isFinite(control.upperBase)) {
+    const reference = componentReference(c, record);
+    details.push(`<span>Допустимый диапазон: <strong>${escapeHtml(formatVerificationBaseValue(control.lowerBase, c.ref, reference.unit))} — ${escapeHtml(formatVerificationBaseValue(control.upperBase, c.ref, reference.unit))}</strong></span>`);
+  }
+  verificationResult.className = `verificationResult ${control.status}`;
+  verificationResult.innerHTML = `
+    <div class="verificationResultHead">
+      <strong>Результат контроля</strong>
+      <span class="verificationResultBadge">${labels[control.status] || "Сравнение невозможно"}</span>
+    </div>
+    ${details.length ? `<div class="verificationResultDetails">${details.join("")}</div>` : ""}
+  `;
+}
 function setVerificationSaveStatus(text, tone = "") {
   if (!verificationSaveStatus || verificationModal.hidden) return;
   verificationSaveStatus.textContent = text;
@@ -297,16 +370,24 @@ function saveVerificationDraft() {
   if (!c) return false;
   const units = verificationUnits(c);
   const parsed = parseVerificationNumber(verificationActualValue.value);
+  const parsedReference = parseVerificationNumber(verificationReferenceValue.value);
   const numericSupported = units.length > 0;
+  const bomReference = parseVerificationNominal(c.value, c.ref);
+  const manualReferenceNeeded = numericSupported && !bomReference.valid;
   const actualValid = !numericSupported || parsed.valid;
+  const referenceValid = !manualReferenceNeeded || parsedReference.valid;
   verificationActualValue.classList.toggle("inputError", !actualValid);
   verificationActualError.hidden = actualValid;
+  verificationReferenceValue.classList.toggle("inputError", !referenceValid);
+  verificationReferenceError.hidden = referenceValid;
   const previous = verificationRecord(c);
   const record = {
     checked: verificationChecked.checked,
     actualValue: previous.actualValue ?? null,
     unit: previous.unit || "",
-    comment: String(verificationComment.value || "")
+    comment: String(verificationComment.value || ""),
+    referenceValue: previous.referenceValue ?? null,
+    referenceUnit: previous.referenceUnit || ""
   };
   if (!numericSupported) {
     record.actualValue = null;
@@ -315,11 +396,19 @@ function saveVerificationDraft() {
     record.actualValue = parsed.value;
     record.unit = !parsed.empty ? (units.includes(verificationUnit.value) ? verificationUnit.value : units[0]) : "";
   }
+  if (manualReferenceNeeded && referenceValid) {
+    record.referenceValue = parsedReference.value;
+    record.referenceUnit = !parsedReference.empty
+      ? (units.includes(verificationReferenceUnit.value) ? verificationReferenceUnit.value : units[0])
+      : "";
+  }
   project.verificationMap[verificationKey] = record;
-  setVerificationSaveStatus(actualValid ? "Сохранение…" : "Значение не сохранено", actualValid ? "" : "error");
+  const allValid = actualValid && referenceValid;
+  setVerificationSaveStatus(allValid ? "Сохранение…" : "Некорректное значение не сохранено", allValid ? "" : "error");
   scheduleSave();
+  renderVerificationResult(c, record);
   renderList();
-  return actualValid;
+  return allValid;
 }
 function openVerification(c) {
   if (!c) return;
@@ -327,31 +416,44 @@ function openVerification(c) {
   verificationKey = compKey(c);
   const record = verificationRecord(c);
   const units = verificationUnits(c);
+  const bomReference = parseVerificationNominal(c.value, c.ref);
+  const tolerance = componentTolerance(c);
   verificationTitle.textContent = c.ref;
   verificationBomValue.textContent = c.value || "Не указан";
+  verificationTolerance.textContent = tolerance === null ? "Не задан" : `±${formatVerificationNumber(tolerance)} %`;
   verificationNumeric.hidden = units.length === 0;
   verificationUnsupported.hidden = units.length > 0;
+  verificationManualReference.hidden = units.length === 0 || bomReference.valid;
   verificationUnit.innerHTML = units.map(unit => `<option value="${escapeHtml(unit)}">${escapeHtml(unit)}</option>`).join("");
+  verificationReferenceUnit.innerHTML = units.map(unit => `<option value="${escapeHtml(unit)}">${escapeHtml(unit)}</option>`).join("");
   verificationActualValue.value = record.actualValue === null || record.actualValue === undefined ? "" : String(record.actualValue).replace(".", ",");
   verificationUnit.value = units.includes(record.unit) ? record.unit : (units[0] || "");
+  verificationReferenceValue.value = record.referenceValue === null || record.referenceValue === undefined ? "" : String(record.referenceValue).replace(".", ",");
+  verificationReferenceUnit.value = units.includes(record.referenceUnit) ? record.referenceUnit : (units[0] || "");
   verificationComment.value = record.comment || "";
   verificationChecked.checked = record.checked === true;
   verificationActualValue.classList.remove("inputError");
   verificationActualError.hidden = true;
+  verificationReferenceValue.classList.remove("inputError");
+  verificationReferenceError.hidden = true;
   verificationSaveStatus.textContent = "";
   verificationSaveStatus.className = "";
+  renderVerificationResult(c, record);
   verificationModal.hidden = false;
-  (units.length ? verificationActualValue : verificationComment).focus();
+  (units.length && !bomReference.valid ? verificationReferenceValue : (units.length ? verificationActualValue : verificationComment)).focus();
 }
 function closeVerification() {
   if (verificationModal.hidden) return;
   saveVerificationDraft();
-  if (!verificationActualError.hidden) {
+  if (!verificationActualError.hidden || !verificationReferenceError.hidden) {
     const c = componentByKey(verificationKey);
     const record = c ? verificationRecord(c) : {};
     verificationActualValue.value = record.actualValue === null || record.actualValue === undefined ? "" : String(record.actualValue).replace(".", ",");
+    verificationReferenceValue.value = record.referenceValue === null || record.referenceValue === undefined ? "" : String(record.referenceValue).replace(".", ",");
     verificationActualValue.classList.remove("inputError");
+    verificationReferenceValue.classList.remove("inputError");
     verificationActualError.hidden = true;
+    verificationReferenceError.hidden = true;
   }
   verificationModal.hidden = true;
   verificationKey = "";
@@ -420,7 +522,7 @@ async function saveProjectNow() {
     if (isElectronApp()) {
       await window.projectApi.writeProject(projectHandle.path, project);
       setSaveStatus("Автосохранено.");
-      if (verificationActualError.hidden) setVerificationSaveStatus("Сохранено", "saved");
+      if (verificationActualError.hidden && verificationReferenceError.hidden) setVerificationSaveStatus("Сохранено", "saved");
       return;
     }
     const fileHandle = await projectHandle.getFileHandle(PROJECT_FILE, {create:true});
@@ -428,7 +530,7 @@ async function saveProjectNow() {
     await writable.write(JSON.stringify(project, null, 2));
     await writable.close();
     setSaveStatus("Автосохранено.");
-    if (verificationActualError.hidden) setVerificationSaveStatus("Сохранено", "saved");
+    if (verificationActualError.hidden && verificationReferenceError.hidden) setVerificationSaveStatus("Сохранено", "saved");
   } catch(e) {
     console.error(e);
     setSaveStatus("Ошибка автосохранения.");
@@ -1348,7 +1450,7 @@ componentInspector.addEventListener("click", ev => {
   deleteComponent(c);
 });
 verificationForm.addEventListener("input", ev => {
-  if (ev.target === verificationActualValue || ev.target === verificationComment) {
+  if (ev.target === verificationActualValue || ev.target === verificationReferenceValue || ev.target === verificationComment) {
     saveVerificationDraft();
   }
 });
