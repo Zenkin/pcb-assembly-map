@@ -12,6 +12,8 @@ The editor lets an operator:
 - track soldered components and overall progress;
 - record an independent component verification status, measured value, unit,
   and verification comment;
+- compare resistor and capacitor measurements with BOM values and percentage
+  tolerances, including automatic unit conversion;
 - keep the project data and source images together in a local folder.
 
 ## Requirements
