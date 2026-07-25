@@ -144,6 +144,50 @@
     </div>
   </section>
 </div>
+<div class="verificationModal" id="verificationModal" hidden>
+  <div class="verificationBackdrop" id="verificationBackdrop"></div>
+  <section class="verificationPanel" role="dialog" aria-modal="true" aria-labelledby="verificationTitle">
+    <header class="verificationHead">
+      <div>
+        <div class="eyebrow">Проверка компонента</div>
+        <h2 id="verificationTitle">R1</h2>
+      </div>
+      <button id="verificationCloseBtn" type="button" aria-label="Закрыть">×</button>
+    </header>
+    <form class="verificationForm" id="verificationForm">
+      <div class="verificationReference">
+        <span>BOM-номинал</span>
+        <strong id="verificationBomValue">Не указан</strong>
+      </div>
+      <div class="verificationNumeric" id="verificationNumeric">
+        <label>Фактический номинал
+          <input id="verificationActualValue" name="actualValue" inputmode="decimal" autocomplete="off" placeholder="Например, 98,5">
+          <span class="fieldError" id="verificationActualError" hidden>Введите неотрицательное число</span>
+        </label>
+        <label>Единица
+          <select id="verificationUnit" name="unit"></select>
+        </label>
+      </div>
+      <div class="verificationUnsupported" id="verificationUnsupported" hidden>
+        Числовой ввод в первой версии доступен для резисторов и конденсаторов.
+      </div>
+      <label>Комментарий
+        <textarea id="verificationComment" name="comment" placeholder="Результат визуального контроля или измерения"></textarea>
+      </label>
+      <label class="verificationToggle">
+        <input id="verificationChecked" name="checked" type="checkbox">
+        <span><strong>Проверен</strong><small>Не зависит от статуса «Припаяно»</small></span>
+      </label>
+      <div class="verificationFooter">
+        <span id="verificationSaveStatus" role="status" aria-live="polite"></span>
+        <button id="verificationDoneBtn" type="button">Готово</button>
+      </div>
+    </form>
+  </section>
+</div>
+<div class="componentContextMenu" id="componentContextMenu" hidden>
+  <button id="contextVerificationBtn" type="button">Проверка компонента</button>
+</div>
 <div class="imagePickerModal" id="imagePickerModal" hidden>
   <div class="imagePickerBackdrop" id="imagePickerBackdrop"></div>
   <section class="imagePickerPanel" role="dialog" aria-modal="true" aria-labelledby="imagePickerTitle">
@@ -175,6 +219,7 @@
     </div>
   </section>
 </div>
+<script src="js/verification.js"></script>
 <script src="js/app.js"></script>
 </body>
 </html>
