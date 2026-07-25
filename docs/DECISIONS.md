@@ -43,6 +43,11 @@ access. Filesystem access remains in `main.js`.
 - Backward compatibility with existing `project.json` files is required.
 - A breaking data-format change requires an explicit migration decision.
 
+Project format version 3 extends version 2 with an optional
+`verificationMap` object. Existing version 2 projects are upgraded in memory
+when opened; missing verification data is interpreted as an empty map. The
+extension does not remove or reinterpret existing fields.
+
 ## D-004 — Distribution artifacts
 
 **Status:** accepted

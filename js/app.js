@@ -8,6 +8,12 @@ const MAX_PROJECT_NAME = 40;
 const MAX_GROUP_NAME = 40;
 const MAX_STAGE_NAME = 40;
 const MAX_REF_NAME = 24;
+const {
+  unitsForRef: verificationUnitsForRef,
+  parseNumber: parseVerificationNumber,
+  normalizeRecord: normalizeVerificationRecord,
+  normalizeMap: normalizeVerificationMap
+} = window.SolderMapVerification;
 let projectHandle = null;
 let project = null;
 let currentSide = "TOP";
@@ -31,6 +37,8 @@ let browserSearch = "";
 let browserSort = "name";
 let lastImagePickerPath = "";
 let browserSearchTimer = null;
+let verificationKey = "";
+let contextComponentKey = "";
 
 const projectGate = document.getElementById("projectGate");
 const startOpenProjectBtn = document.getElementById("startOpenProjectBtn");
@@ -90,6 +98,23 @@ const confirmText = document.getElementById("confirmText");
 const confirmCloseBtn = document.getElementById("confirmCloseBtn");
 const confirmCancelBtn = document.getElementById("confirmCancelBtn");
 const confirmAcceptBtn = document.getElementById("confirmAcceptBtn");
+const verificationModal = document.getElementById("verificationModal");
+const verificationBackdrop = document.getElementById("verificationBackdrop");
+const verificationTitle = document.getElementById("verificationTitle");
+const verificationCloseBtn = document.getElementById("verificationCloseBtn");
+const verificationForm = document.getElementById("verificationForm");
+const verificationBomValue = document.getElementById("verificationBomValue");
+const verificationNumeric = document.getElementById("verificationNumeric");
+const verificationUnsupported = document.getElementById("verificationUnsupported");
+const verificationActualValue = document.getElementById("verificationActualValue");
+const verificationActualError = document.getElementById("verificationActualError");
+const verificationUnit = document.getElementById("verificationUnit");
+const verificationComment = document.getElementById("verificationComment");
+const verificationChecked = document.getElementById("verificationChecked");
+const verificationSaveStatus = document.getElementById("verificationSaveStatus");
+const verificationDoneBtn = document.getElementById("verificationDoneBtn");
+const componentContextMenu = document.getElementById("componentContextMenu");
+const contextVerificationBtn = document.getElementById("contextVerificationBtn");
 
 function enforceInputLimit(input, max, label) {
   const raw = String(input.value || "");
@@ -202,24 +227,26 @@ function ensureFileSystemAccess() {
 }
 function createBlankProject(name) {
   return {
-    version: 2,
+    version: 3,
     name: name || "PCB project",
     images: {TOP:null, BOTTOM:null},
     imageSizes: cloneData(DEFAULT_IMAGE_SIZES),
     stages: [],
     groups: [],
     components: [],
-    doneMap: {}
+    doneMap: {},
+    verificationMap: {}
   };
 }
 function normalizeProject(data, folderName) {
   const normalized = createBlankProject(data?.name || folderName);
   if (data && typeof data === "object") {
-    normalized.version = 2;
+    normalized.version = 3;
     normalized.images = Object.assign(normalized.images, data.images || {});
     normalized.imageSizes = Object.assign(normalized.imageSizes, data.imageSizes || {});
     normalized.components = Array.isArray(data.components) ? data.components : [];
     normalized.doneMap = data.doneMap || {};
+    normalized.verificationMap = normalizeVerificationMap(data.verificationMap);
     normalized.groups = Array.isArray(data.groups) ? data.groups : [];
     normalized.stages = Array.isArray(data.stages) ? data.stages : [];
   }
@@ -249,6 +276,100 @@ function componentByKey(key) {
 }
 function isDone(c) {
   return !!project.doneMap[compKey(c)];
+}
+function verificationUnits(c) {
+  return verificationUnitsForRef(c?.ref);
+}
+function verificationRecord(c) {
+  const saved = project.verificationMap[compKey(c)];
+  return normalizeVerificationRecord(saved);
+}
+function isVerified(c) {
+  return verificationRecord(c).checked === true;
+}
+function setVerificationSaveStatus(text, tone = "") {
+  if (!verificationSaveStatus || verificationModal.hidden) return;
+  verificationSaveStatus.textContent = text;
+  verificationSaveStatus.className = tone;
+}
+function saveVerificationDraft() {
+  const c = componentByKey(verificationKey);
+  if (!c) return false;
+  const units = verificationUnits(c);
+  const parsed = parseVerificationNumber(verificationActualValue.value);
+  const numericSupported = units.length > 0;
+  const actualValid = !numericSupported || parsed.valid;
+  verificationActualValue.classList.toggle("inputError", !actualValid);
+  verificationActualError.hidden = actualValid;
+  const previous = verificationRecord(c);
+  const record = {
+    checked: verificationChecked.checked,
+    actualValue: previous.actualValue ?? null,
+    unit: previous.unit || "",
+    comment: String(verificationComment.value || "")
+  };
+  if (!numericSupported) {
+    record.actualValue = null;
+    record.unit = "";
+  } else if (actualValid) {
+    record.actualValue = parsed.value;
+    record.unit = !parsed.empty ? (units.includes(verificationUnit.value) ? verificationUnit.value : units[0]) : "";
+  }
+  project.verificationMap[verificationKey] = record;
+  setVerificationSaveStatus(actualValid ? "Сохранение…" : "Значение не сохранено", actualValid ? "" : "error");
+  scheduleSave();
+  renderList();
+  return actualValid;
+}
+function openVerification(c) {
+  if (!c) return;
+  hideComponentContextMenu();
+  verificationKey = compKey(c);
+  const record = verificationRecord(c);
+  const units = verificationUnits(c);
+  verificationTitle.textContent = c.ref;
+  verificationBomValue.textContent = c.value || "Не указан";
+  verificationNumeric.hidden = units.length === 0;
+  verificationUnsupported.hidden = units.length > 0;
+  verificationUnit.innerHTML = units.map(unit => `<option value="${escapeHtml(unit)}">${escapeHtml(unit)}</option>`).join("");
+  verificationActualValue.value = record.actualValue === null || record.actualValue === undefined ? "" : String(record.actualValue).replace(".", ",");
+  verificationUnit.value = units.includes(record.unit) ? record.unit : (units[0] || "");
+  verificationComment.value = record.comment || "";
+  verificationChecked.checked = record.checked === true;
+  verificationActualValue.classList.remove("inputError");
+  verificationActualError.hidden = true;
+  verificationSaveStatus.textContent = "";
+  verificationSaveStatus.className = "";
+  verificationModal.hidden = false;
+  (units.length ? verificationActualValue : verificationComment).focus();
+}
+function closeVerification() {
+  if (verificationModal.hidden) return;
+  saveVerificationDraft();
+  if (!verificationActualError.hidden) {
+    const c = componentByKey(verificationKey);
+    const record = c ? verificationRecord(c) : {};
+    verificationActualValue.value = record.actualValue === null || record.actualValue === undefined ? "" : String(record.actualValue).replace(".", ",");
+    verificationActualValue.classList.remove("inputError");
+    verificationActualError.hidden = true;
+  }
+  verificationModal.hidden = true;
+  verificationKey = "";
+  renderAll();
+}
+function showComponentContextMenu(ev, c) {
+  ev.preventDefault();
+  contextComponentKey = compKey(c);
+  componentContextMenu.hidden = false;
+  const width = 220;
+  const height = 48;
+  componentContextMenu.style.left = `${Math.min(ev.clientX, window.innerWidth - width - 8)}px`;
+  componentContextMenu.style.top = `${Math.min(ev.clientY, window.innerHeight - height - 8)}px`;
+  contextVerificationBtn.focus();
+}
+function hideComponentContextMenu() {
+  componentContextMenu.hidden = true;
+  contextComponentKey = "";
 }
 function pushUndoState() {
   if (!project) return;
@@ -299,6 +420,7 @@ async function saveProjectNow() {
     if (isElectronApp()) {
       await window.projectApi.writeProject(projectHandle.path, project);
       setSaveStatus("Автосохранено.");
+      if (verificationActualError.hidden) setVerificationSaveStatus("Сохранено", "saved");
       return;
     }
     const fileHandle = await projectHandle.getFileHandle(PROJECT_FILE, {create:true});
@@ -306,9 +428,11 @@ async function saveProjectNow() {
     await writable.write(JSON.stringify(project, null, 2));
     await writable.close();
     setSaveStatus("Автосохранено.");
+    if (verificationActualError.hidden) setVerificationSaveStatus("Сохранено", "saved");
   } catch(e) {
     console.error(e);
     setSaveStatus("Ошибка автосохранения.");
+    setVerificationSaveStatus("Ошибка сохранения", "error");
   }
 }
 function scheduleSave() {
@@ -563,15 +687,15 @@ function renderHotspots() {
     d.addEventListener("mousedown", ev => startGeometryEdit(ev, c, d));
     d.addEventListener("click", ev => {
       ev.stopPropagation();
+      if (ev.detail >= 2) {
+        openVerification(c);
+        return;
+      }
       selectedKey = compKey(c);
       renderAll();
       selectRef(c.ref, c.side);
     });
-    d.addEventListener("dblclick", ev => {
-      if (appMode !== "solder") return;
-      ev.stopPropagation();
-      setDone(c, !isDone(c));
-    });
+    d.addEventListener("contextmenu", ev => showComponentContextMenu(ev, c));
     board.appendChild(d);
   });
 }
@@ -635,7 +759,9 @@ function renderList() {
       card.dataset.ref = c.ref;
       card.dataset.side = c.side;
       const solderButton = appMode === "solder" ? `<button class="solderBtn ${isDone(c) ? "done" : ""}" type="button">${isDone(c) ? "✓ Припаяно" : "○ Не припаяно"}</button>` : "";
-      card.innerHTML = `<div class="ref">${escapeHtml(c.ref)}</div><div class="meta">${escapeHtml(c.side)} · ${escapeHtml(c.group || "Без группы")} · ${escapeHtml(c.value || "Без номинала")}</div><div class="note">${escapeHtml(c.note)}</div>${solderButton}`;
+      const record = verificationRecord(c);
+      const actualValue = record.actualValue === null || record.actualValue === undefined ? "" : `${record.actualValue} ${record.unit || ""}`.trim();
+      card.innerHTML = `<div class="ref">${escapeHtml(c.ref)}</div><div class="meta">${escapeHtml(c.side)} · ${escapeHtml(c.group || "Без группы")} · ${escapeHtml(c.value || "Без номинала")}</div><div class="verificationSummary ${isVerified(c) ? "verified" : ""}">${isVerified(c) ? "✓ Проверен" : "○ Не проверен"}${actualValue ? ` · ${escapeHtml(actualValue)}` : ""}</div><div class="note">${escapeHtml(c.note)}</div><button class="verificationBtn" type="button">Проверка</button>${solderButton}`;
       card.addEventListener("click", ev => {
         if (ev.target.closest("button")) return;
         selectedKey = compKey(c);
@@ -647,6 +773,11 @@ function renderList() {
         ev.stopPropagation();
         setDone(c, !isDone(c));
       });
+      card.querySelector(".verificationBtn").addEventListener("click", ev => {
+        ev.stopPropagation();
+        openVerification(c);
+      });
+      card.addEventListener("contextmenu", ev => showComponentContextMenu(ev, c));
       list.appendChild(card);
     });
   });
@@ -934,6 +1065,10 @@ function updateComponentFromForm(form, shouldRender = true) {
   c.h = Math.max(1, Number(data.get("h")) || 1);
   if (oldKey !== compKey(c)) {
     delete project.doneMap[oldKey];
+    if (project.verificationMap[oldKey]) {
+      project.verificationMap[compKey(c)] = project.verificationMap[oldKey];
+      delete project.verificationMap[oldKey];
+    }
   }
   if (doneChecked) project.doneMap[compKey(c)] = true;
   else delete project.doneMap[compKey(c)];
@@ -955,6 +1090,7 @@ function deleteComponent(c) {
   if (!c) return;
   pushUndoState();
   delete project.doneMap[compKey(c)];
+  delete project.verificationMap[compKey(c)];
   project.components.splice(project.components.indexOf(c), 1);
   selectedKey = "";
   scheduleSave();
@@ -1211,6 +1347,24 @@ componentInspector.addEventListener("click", ev => {
   const c = form && componentByKey(form.dataset.key);
   deleteComponent(c);
 });
+verificationForm.addEventListener("input", ev => {
+  if (ev.target === verificationActualValue || ev.target === verificationComment) {
+    saveVerificationDraft();
+  }
+});
+verificationForm.addEventListener("change", saveVerificationDraft);
+verificationCloseBtn.addEventListener("click", closeVerification);
+verificationDoneBtn.addEventListener("click", closeVerification);
+verificationBackdrop.addEventListener("click", closeVerification);
+contextVerificationBtn.addEventListener("click", () => {
+  const c = componentByKey(contextComponentKey);
+  openVerification(c);
+});
+document.addEventListener("pointerdown", ev => {
+  if (!componentContextMenu.hidden && !ev.target.closest(".componentContextMenu")) {
+    hideComponentContextMenu();
+  }
+});
 board.addEventListener("mousedown", ev => {
   if (appMode !== "editor" || !markMode || !imageUrls[currentSide] || ev.button !== 0 || ev.target.closest(".hotspot")) return;
   ev.preventDefault();
@@ -1255,6 +1409,15 @@ document.getElementById("clearVisibleDone").addEventListener("click", () => {
   renderAll();
 });
 window.addEventListener("keydown", ev => {
+  if (ev.key === "Escape" && !verificationModal.hidden) {
+    ev.preventDefault();
+    closeVerification();
+    return;
+  }
+  if (ev.key === "Escape" && !componentContextMenu.hidden) {
+    hideComponentContextMenu();
+    return;
+  }
   if (!project || isEditableTextTarget(ev.target)) return;
   const isUndoKey = ev.code === "KeyZ" || ev.key.toLowerCase() === "z" || ev.key.toLowerCase() === "я";
   if ((ev.ctrlKey || ev.metaKey) && ev.shiftKey && isUndoKey) {

@@ -10,6 +10,8 @@ The editor lets an operator:
 - group components and arrange them into assembly stages;
 - search and filter the component list;
 - track soldered components and overall progress;
+- record an independent component verification status, measured value, unit,
+  and verification comment;
 - keep the project data and source images together in a local folder.
 
 ## Requirements
