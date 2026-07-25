@@ -156,8 +156,20 @@
     </header>
     <form class="verificationForm" id="verificationForm">
       <div class="verificationReference">
-        <span>BOM-номинал</span>
-        <strong id="verificationBomValue">Не указан</strong>
+        <div><span>BOM-номинал</span><strong id="verificationBomValue">Не указан</strong></div>
+        <div><span>Допуск</span><strong id="verificationTolerance">Не задан</strong></div>
+      </div>
+      <div class="verificationManualReference" id="verificationManualReference" hidden>
+        <div class="verificationWarning">BOM-номинал не распознан. Укажите опорный номинал вручную для этого компонента.</div>
+        <div class="verificationNumeric">
+          <label>Опорный номинал
+            <input id="verificationReferenceValue" name="referenceValue" inputmode="decimal" autocomplete="off" placeholder="Например, 100">
+            <span class="fieldError" id="verificationReferenceError" hidden>Введите неотрицательное число</span>
+          </label>
+          <label>Единица
+            <select id="verificationReferenceUnit" name="referenceUnit"></select>
+          </label>
+        </div>
       </div>
       <div class="verificationNumeric" id="verificationNumeric">
         <label>Фактический номинал
@@ -171,6 +183,7 @@
       <div class="verificationUnsupported" id="verificationUnsupported" hidden>
         Числовой ввод в первой версии доступен для резисторов и конденсаторов.
       </div>
+      <section class="verificationResult" id="verificationResult" aria-live="polite"></section>
       <label>Комментарий
         <textarea id="verificationComment" name="comment" placeholder="Результат визуального контроля или измерения"></textarea>
       </label>
