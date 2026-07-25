@@ -98,6 +98,7 @@ assets/          Application icons
 
 - [Component verification module](docs/specifications/component-verification.md) — approved requirements, acceptance criteria, BOM update rules, and reporting behavior.
 - [Automatic component matching](docs/specifications/automatic-component-matching.md) — approved search-radius, footprint-geometry comparison, ambiguity, and result-status rules.
+- [Matching session JSON format](docs/specifications/matching-session-json.md) — versioned millimetre-based exchange format for expected and detected footprints.
 
 ## Development workflow
 
