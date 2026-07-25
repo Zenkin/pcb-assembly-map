@@ -10,6 +10,7 @@ contextBridge.exposeInMainWorld("projectApi", {
   saveImage: (folderPath, fileName, bytes) => ipcRenderer.invoke("project:save-image", folderPath, fileName, bytes),
   copyImage: (folderPath, sourcePath, fileName) => ipcRenderer.invoke("project:copy-image", folderPath, sourcePath, fileName),
   imageUrl: (folderPath, fileName) => ipcRenderer.invoke("project:image-url", folderPath, fileName),
+  selectBomFile: () => ipcRenderer.invoke("bom:select-file"),
   exportVerificationReport: payload => ipcRenderer.invoke("report:export", payload)
 });
 
