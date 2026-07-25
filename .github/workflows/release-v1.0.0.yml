@@ -38,7 +38,7 @@ jobs:
         run: npm run check
 
       - name: Build installer and portable executable
-        run: npm run build
+        run: npm run build -- --publish never
 
       - name: Stage Windows assets
         shell: pwsh
@@ -82,7 +82,7 @@ jobs:
         run: npm run check
 
       - name: Build Linux archive
-        run: npm run build:linux
+        run: npm run build:linux -- --publish never
 
       - name: Stage Linux asset
         run: |
