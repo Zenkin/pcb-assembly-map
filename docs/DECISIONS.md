@@ -109,3 +109,20 @@ Renderer-provided paths are not trusted implicitly.
   retained.
 - Restoration can replace the complete verification map or only explicitly
   selected reference designators.
+
+## D-008 — Matching coordinate calibration
+
+**Status:** accepted
+
+- Matching-session coordinates remain in millimetres; existing project
+  component areas remain in source-image pixels.
+- Results cannot be applied to a project without an explicit, side-specific
+  millimetre-to-pixel calibration.
+- Version 1 calibration uses at least three non-collinear control points and
+  fits an affine transform by least squares.
+- Calibration reports point residuals and rejects results above the configured
+  maximum pixel error.
+- Reflected transforms are valid and reported explicitly for BOTTOM-side
+  workflows.
+- Perspective correction and applying results to `project.json` are separate
+  future tasks.
