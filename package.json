@@ -1,0 +1,64 @@
+{
+  "name": "soldermap",
+  "version": "1.0.0",
+  "description": "Desktop PCB soldering map editor and assembly checklist",
+  "main": "main.js",
+  "private": true,
+  "scripts": {
+    "start": "electron .",
+    "check": "node --check main.js && node --check preload.js && node --check js/app.js",
+    "build": "electron-builder --win",
+    "build:linux": "electron-builder --linux",
+    "build:linux:appimage": "electron-builder --linux AppImage",
+    "build:mac": "electron-builder --mac",
+    "pack": "electron-builder --win --dir",
+    "pack:linux": "electron-builder --linux --dir",
+    "pack:mac": "electron-builder --mac --dir"
+  },
+  "build": {
+    "appId": "local.soldermap",
+    "productName": "SolderMap",
+    "files": [
+      "index.html",
+      "main.js",
+      "preload.js",
+      "css/**/*",
+      "js/**/*",
+      "assets/**/*",
+      "projects/default-project/**/*"
+    ],
+    "win": {
+      "icon": "assets/app-icon.ico",
+      "target": [
+        "nsis",
+        "portable"
+      ]
+    },
+    "nsis": {
+      "installerIcon": "assets/app-icon.ico",
+      "uninstallerIcon": "assets/app-icon.ico"
+    },
+    "mac": {
+      "icon": "assets/app-icon.icns",
+      "category": "public.app-category.productivity",
+      "target": [
+        "dmg",
+        "zip"
+      ]
+    },
+    "linux": {
+      "icon": "assets/app-icon.png",
+      "category": "Utility",
+      "target": [
+        "tar.gz"
+      ]
+    },
+    "directories": {
+      "output": "dist"
+    }
+  },
+  "devDependencies": {
+    "electron": "^33.4.11",
+    "electron-builder": "^25.1.8"
+  }
+}

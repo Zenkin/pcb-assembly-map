@@ -1,0 +1,65 @@
+name: Ошибка
+description: Неверное поведение приложения, потеря данных или сбой сборки
+labels: ["type:bug"]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: Что произошло
+      description: Опишите наблюдаемое поведение и текст ошибки.
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Ожидаемое поведение
+      description: Что должно происходить вместо этого?
+    validations:
+      required: true
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: Как воспроизвести
+      placeholder: |
+        1. Запустить ...
+        2. Открыть ...
+        3. Нажать ...
+        4. Наблюдать ...
+    validations:
+      required: true
+  - type: dropdown
+    id: platform
+    attributes:
+      label: Операционная система
+      options:
+        - Windows
+        - Linux
+        - macOS
+        - Несколько систем
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Версия SolderMap
+      placeholder: Например, 1.0.0
+    validations:
+      required: true
+  - type: textarea
+    id: project
+    attributes:
+      label: Данные проекта
+      description: Укажите, возникает ли ошибка в новом проекте. Не прикладывайте конфиденциальные PCB-изображения без необходимости.
+    validations:
+      required: false
+  - type: textarea
+    id: validation
+    attributes:
+      label: Проверка исправления
+      value: |
+        - [ ] Ошибка больше не воспроизводится.
+        - [ ] `npm run check`
+        - [ ] Проверен существующий project.json.
+        - [ ] Проверен новый проект.
+    validations:
+      required: true

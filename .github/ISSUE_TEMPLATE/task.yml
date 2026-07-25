@@ -1,0 +1,68 @@
+name: Задача
+description: Плановая доработка без явного бага
+labels: ["type:task"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Используйте этот шаблон для небольшой функциональной, технической или документальной доработки SolderMap.
+  - type: textarea
+    id: goal
+    attributes:
+      label: Цель
+      description: Что должно измениться для пользователя или разработчика?
+      placeholder: Например, добавить импорт списка компонентов из CSV.
+    validations:
+      required: true
+  - type: textarea
+    id: context
+    attributes:
+      label: Контекст
+      description: Где это используется и почему текущего поведения недостаточно?
+    validations:
+      required: true
+  - type: textarea
+    id: scope
+    attributes:
+      label: Что сделать
+      description: Конкретный объём работ.
+      placeholder: |
+        - Изучить ...
+        - Изменить ...
+        - Добавить проверки ...
+        - Обновить документацию ...
+    validations:
+      required: true
+  - type: textarea
+    id: out_of_scope
+    attributes:
+      label: Что не трогать
+      description: Явные ограничения, чтобы изменение не затронуло соседние части проекта.
+      value: |
+        - Не менять формат project.json без отдельного решения о совместимости.
+        - Не менять IPC API и настройки безопасности Electron без явной необходимости.
+        - Не менять зависимости и packaging configuration без отдельного обоснования.
+    validations:
+      required: true
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Критерии приёмки
+      description: По каким признакам считаем задачу выполненной?
+      placeholder: |
+        - Сценарий работает на существующем проекте.
+        - Старые project.json продолжают открываться.
+        - Проверки проходят.
+    validations:
+      required: true
+  - type: textarea
+    id: validation
+    attributes:
+      label: Проверки
+      description: Какие команды и ручные сценарии надо выполнить?
+      value: |
+        - [ ] `npm ci`
+        - [ ] `npm run check`
+        - [ ] `npm start` и ручная проверка затронутого сценария
+    validations:
+      required: true
