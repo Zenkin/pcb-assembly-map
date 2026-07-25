@@ -128,6 +128,14 @@
       </div>
       <input id="bomFileInput" class="nativeFileInput" type="file" accept=".csv,.tsv,.txt,text/csv,text/tab-separated-values">
     </section>
+    <section class="matchingManagement editorOnly" aria-label="Автоматическое сопоставление компонентов">
+      <div>
+        <strong>Автосопоставление</strong>
+        <span id="matchingStatus">Сеанс не открыт</span>
+      </div>
+      <button id="importMatchingBtn" type="button">Открыть сеанс JSON</button>
+      <input id="matchingFileInput" class="nativeFileInput" type="file" accept=".json,application/json">
+    </section>
 
     <section class="groupPanel editorOnly">
       <div class="sectionTitle">Этапы пайки</div>
@@ -224,6 +232,28 @@
     </footer>
   </section>
 </div>
+<div class="dataModal" id="matchingModal" hidden>
+  <div class="dataModalBackdrop" id="matchingBackdrop"></div>
+  <section class="dataModalPanel matchingPanel" role="dialog" aria-modal="true" aria-labelledby="matchingTitle">
+    <header class="dataModalHead">
+      <div><div class="eyebrow">Автоматическое сопоставление</div><h2 id="matchingTitle">Результаты сеанса</h2></div>
+      <button id="matchingCloseBtn" type="button" aria-label="Закрыть">×</button>
+    </header>
+    <div class="dataModalBody">
+      <div class="matchingSummary" id="matchingSummary"></div>
+      <div class="matchingTableWrap">
+        <table class="matchingTable">
+          <thead><tr><th>Компонент</th><th>Сторона</th><th>Результат</th><th>Найденное место</th><th>В радиусе</th></tr></thead>
+          <tbody id="matchingResults"></tbody>
+        </table>
+      </div>
+    </div>
+    <footer class="dataModalFooter">
+      <span id="matchingDetails"></span><span></span><span></span>
+      <button id="matchingDoneBtn" class="primaryBtn" type="button">Готово</button>
+    </footer>
+  </section>
+</div>
 <div class="verificationModal" id="verificationModal" hidden>
   <div class="verificationBackdrop" id="verificationBackdrop"></div>
   <section class="verificationPanel" role="dialog" aria-modal="true" aria-labelledby="verificationTitle">
@@ -315,6 +345,11 @@
 <script src="js/verification.js"></script>
 <script src="js/report.js"></script>
 <script src="js/bom.js"></script>
+<script src="js/matching-geometry.js"></script>
+<script src="js/automatic-matching.js"></script>
+<script src="js/matching-session.js"></script>
+<script src="js/matching-format.js"></script>
+<script src="js/matching-view.js"></script>
 <script src="js/app.js"></script>
 </body>
 </html>

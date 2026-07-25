@@ -31,6 +31,12 @@ const {
   compareBackup: compareVerificationBackup,
   restoreBackup: restoreVerificationBackup
 } = window.SolderMapBom;
+const {
+  runDocument: runMatchingDocument
+} = window.SolderMapMatchingFormat;
+const {
+  buildViewModel: buildMatchingViewModel
+} = window.SolderMapMatchingView;
 let projectHandle = null;
 let project = null;
 let currentSide = "TOP";
@@ -88,6 +94,16 @@ const importBomBtn = document.getElementById("importBomBtn");
 const openBackupsBtn = document.getElementById("openBackupsBtn");
 const backupCount = document.getElementById("backupCount");
 const bomFileInput = document.getElementById("bomFileInput");
+const matchingStatus = document.getElementById("matchingStatus");
+const importMatchingBtn = document.getElementById("importMatchingBtn");
+const matchingFileInput = document.getElementById("matchingFileInput");
+const matchingModal = document.getElementById("matchingModal");
+const matchingBackdrop = document.getElementById("matchingBackdrop");
+const matchingCloseBtn = document.getElementById("matchingCloseBtn");
+const matchingSummary = document.getElementById("matchingSummary");
+const matchingResults = document.getElementById("matchingResults");
+const matchingDetails = document.getElementById("matchingDetails");
+const matchingDoneBtn = document.getElementById("matchingDoneBtn");
 const bomModal = document.getElementById("bomModal");
 const bomBackdrop = document.getElementById("bomBackdrop");
 const bomCloseBtn = document.getElementById("bomCloseBtn");
@@ -1007,6 +1023,80 @@ async function selectBom() {
     notify(error?.message || "Не удалось прочитать BOM.", "warning");
   }
 }
+function closeMatchingResults() {
+  matchingModal.hidden = true;
+}
+function showMatchingResults(source) {
+  const view = buildMatchingViewModel(
+    source.name,
+    runMatchingDocument(source.text)
+  );
+  matchingStatus.className = "";
+  matchingStatus.textContent = `${view.sourceName} · ${view.summary.matched}/${view.summary.total}`;
+  matchingSummary.innerHTML = [
+    ["Всего", view.summary.total, ""],
+    ["Сопоставлено", view.summary.matched, "matched"],
+    ["Неоднозначно", view.summary.ambiguous, "ambiguous"],
+    ["Не найдено", view.summary.unmatched, "unmatched"]
+  ].map(([label, value, tone]) => `
+    <div class="matchingSummaryItem ${tone}">
+      <strong>${value}</strong>
+      <span>${label}</span>
+    </div>
+  `).join("");
+  matchingResults.innerHTML = view.rows.map(row => `
+    <tr>
+      <td><strong>${escapeHtml(row.ref || row.expectedId)}</strong></td>
+      <td>${escapeHtml(row.side)}</td>
+      <td><span class="matchingStatusBadge ${escapeHtml(row.tone)}">${escapeHtml(row.statusLabel)}</span></td>
+      <td>${escapeHtml(row.selectedFoundId || "—")}</td>
+      <td>${row.candidatesInRadius}</td>
+    </tr>
+  `).join("") || `<tr><td colspan="5">В сеансе нет ожидаемых посадочных мест.</td></tr>`;
+  matchingDetails.textContent = [
+    `${view.sourceName}`,
+    `найденных мест: ${view.foundCount}`,
+    `k = ${view.options.radiusScale}`,
+    `радиус без геометрии: ${view.options.defaultRadiusMm} мм`
+  ].join(" · ");
+  matchingModal.hidden = false;
+  matchingDoneBtn.focus();
+}
+async function readMatchingFromBrowserFile(file) {
+  if (!file) return null;
+  if (file.size > 10 * 1024 * 1024) {
+    throw new Error("Файл сеанса больше 10 МБ.");
+  }
+  return {name:file.name, text:await file.text()};
+}
+async function selectMatchingSession() {
+  const previousStatus = matchingStatus.textContent;
+  const previousStatusClass = matchingStatus.className;
+  importMatchingBtn.disabled = true;
+  matchingStatus.className = "";
+  matchingStatus.textContent = "Чтение...";
+  try {
+    if (window.projectApi?.selectMatchingSessionFile) {
+      const source = await window.projectApi.selectMatchingSessionFile();
+      if (source) showMatchingResults(source);
+      else {
+        matchingStatus.className = previousStatusClass;
+        matchingStatus.textContent = previousStatus;
+      }
+      return;
+    }
+    matchingFileInput.click();
+    matchingStatus.className = previousStatusClass;
+    matchingStatus.textContent = previousStatus;
+  } catch (error) {
+    console.error(error);
+    matchingStatus.className = "error";
+    matchingStatus.textContent = "Ошибка файла";
+    notify(error?.message || "Не удалось открыть сеанс сопоставления.", "warning");
+  } finally {
+    importMatchingBtn.disabled = false;
+  }
+}
 async function applyBomUpdate() {
   if (!pendingBomPlan || !pendingBomPlan.changed) return;
   if (pendingBomPlan.conflicts.some(conflict => conflict.kind === "duplicate")) {
@@ -1822,6 +1912,23 @@ bomFileInput.addEventListener("change", async () => {
     notify(error?.message || "Не удалось прочитать BOM.", "warning");
   }
 });
+importMatchingBtn.addEventListener("click", selectMatchingSession);
+matchingFileInput.addEventListener("change", async () => {
+  try {
+    const source = await readMatchingFromBrowserFile(matchingFileInput.files[0]);
+    if (source) showMatchingResults(source);
+  } catch (error) {
+    console.error(error);
+    matchingStatus.className = "error";
+    matchingStatus.textContent = "Ошибка файла";
+    notify(error?.message || "Не удалось открыть сеанс сопоставления.", "warning");
+  } finally {
+    matchingFileInput.value = "";
+  }
+});
+matchingCloseBtn.addEventListener("click", closeMatchingResults);
+matchingDoneBtn.addEventListener("click", closeMatchingResults);
+matchingBackdrop.addEventListener("click", closeMatchingResults);
 bomCloseBtn.addEventListener("click", closeBomModal);
 bomCancelBtn.addEventListener("click", closeBomModal);
 bomBackdrop.addEventListener("click", closeBomModal);
@@ -1930,6 +2037,11 @@ document.getElementById("clearVisibleDone").addEventListener("click", () => {
   renderAll();
 });
 window.addEventListener("keydown", ev => {
+  if (ev.key === "Escape" && !matchingModal.hidden) {
+    ev.preventDefault();
+    closeMatchingResults();
+    return;
+  }
   if (ev.key === "Escape" && !bomModal.hidden) {
     ev.preventDefault();
     closeBomModal();

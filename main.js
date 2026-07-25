@@ -18,6 +18,7 @@ const MAX_REPORT_ROWS = 100000;
 const MAX_REPORT_CELL_LENGTH = 200000;
 const MAX_REPORT_TOTAL_LENGTH = 25000000;
 const MAX_BOM_FILE_SIZE = 10 * 1024 * 1024;
+const MAX_MATCHING_SESSION_FILE_SIZE = 10 * 1024 * 1024;
 
 function projectStorePath() {
   return path.join(app.getPath("documents"), PROJECTS_ROOT_NAME);
@@ -254,6 +255,32 @@ ipcMain.handle("bom:select-file", async event => {
   const stat = await fs.stat(filePath);
   if (!stat.isFile() || stat.size > MAX_BOM_FILE_SIZE) {
     throw new Error("BOM file is too large or is not a regular file.");
+  }
+  return {
+    name:path.basename(filePath),
+    text:await fs.readFile(filePath, "utf8")
+  };
+});
+
+ipcMain.handle("matching:select-file", async event => {
+  const parentWindow = BrowserWindow.fromWebContents(event.sender);
+  const options = {
+    title:"Выберите сеанс автоматического сопоставления",
+    buttonLabel:"Открыть сеанс",
+    properties:["openFile"],
+    filters:[
+      {name:"Сеанс сопоставления", extensions:["json"]},
+      {name:"Все файлы", extensions:["*"]}
+    ]
+  };
+  const result = parentWindow
+    ? await dialog.showOpenDialog(parentWindow, options)
+    : await dialog.showOpenDialog(options);
+  if (result.canceled || !result.filePaths[0]) return null;
+  const filePath = result.filePaths[0];
+  const stat = await fs.stat(filePath);
+  if (!stat.isFile() || stat.size > MAX_MATCHING_SESSION_FILE_SIZE) {
+    throw new Error("Matching session file is too large or is not a regular file.");
   }
   return {
     name:path.basename(filePath),
