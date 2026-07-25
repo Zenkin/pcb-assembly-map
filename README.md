@@ -20,6 +20,8 @@ The editor lets an operator:
   filterable Excel `.xlsx`;
 - import or update a CSV/TSV BOM with a preview of affected components,
   conflict confirmation, and selective reset of stale verification data;
+- open a millimetre-based matching-session JSON file and inspect automatic
+  matching totals and per-component results without changing the project;
 - keep the ten latest verification backups and restore either the complete
   snapshot or selected reference designators;
 - keep the project data and source images together in a local folder.
@@ -89,6 +91,7 @@ css/styles.css   Application styles
 js/app.js        Renderer state and interactions
 js/report.js     Verification report rows and CSV/XLSX serialization
 js/bom.js        BOM parsing, update planning, backups and restoration
+js/matching-*.js Automatic footprint matching, exchange format and result view
 preload.js       Safe renderer-to-main IPC bridge
 main.js          Electron lifecycle, filesystem and project IPC
 assets/          Application icons
