@@ -48,7 +48,7 @@ tracked by Git.
 ## Downloads
 
 Ready-to-use builds are published as assets on the
-[GitHub Releases](https://github.com/Zenkin/pcb-assembly-map/releases) page.
+[GitHub Releases](https://github.com/Zenkin/solder-map/releases) page.
 Source code and generated installers are kept separate so that repository
 history remains compact and reproducible.
 
@@ -62,6 +62,10 @@ preload.js       Safe renderer-to-main IPC bridge
 main.js          Electron lifecycle, filesystem and project IPC
 assets/          Application icons
 ```
+
+## Specifications
+
+- [Component verification module](docs/specifications/component-verification.md) — approved requirements, acceptance criteria, BOM update rules, and reporting behavior.
 
 ## Development workflow
 
