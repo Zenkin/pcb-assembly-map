@@ -8,7 +8,9 @@ const {
   calculateControl,
   formatBaseValue,
   normalizeRecord,
-  normalizeMap
+  normalizeMap,
+  matchesFilter,
+  summarize
 } = require("../js/verification.js");
 
 test("accepts decimal comma and decimal point", () => {
@@ -107,4 +109,30 @@ test("handles missing measurement, missing reference, and zero reference", () =>
 test("formats base values in a convenient unit", () => {
   assert.equal(formatBaseValue(100000, "C1"), "100 нФ");
   assert.equal(formatBaseValue(100, "R1", "Ом"), "100 Ом");
+});
+
+test("filters verification states without mixing incomparable results into out of tolerance", () => {
+  assert.equal(matchesFilter({checked:true, status:"in_tolerance"}, "verified"), true);
+  assert.equal(matchesFilter({checked:false, status:"out_of_tolerance"}, "unverified"), true);
+  assert.equal(matchesFilter({checked:false, status:"out_of_tolerance"}, "out_of_tolerance"), true);
+  assert.equal(matchesFilter({checked:true, status:"not_comparable"}, "out_of_tolerance"), false);
+  assert.equal(matchesFilter({checked:true, status:"no_tolerance"}, "out_of_tolerance"), false);
+});
+
+test("counts tolerance categories only for verified components", () => {
+  assert.deepEqual(summarize([
+    {checked:true, status:"in_tolerance", comment:""},
+    {checked:true, status:"out_of_tolerance", comment:"Проверить пайку"},
+    {checked:true, status:"no_tolerance", comment:" "},
+    {checked:true, status:"no_measurement", comment:"Маркировка верна"},
+    {checked:false, status:"out_of_tolerance", comment:""},
+    {checked:false, status:"no_tolerance", comment:""}
+  ]), {
+    total:6,
+    verified:4,
+    inTolerance:1,
+    outOfTolerance:1,
+    noTolerance:1,
+    comments:2
+  });
 });

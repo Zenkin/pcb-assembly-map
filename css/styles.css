@@ -87,6 +87,7 @@ button.active { background:var(--ink); color:#fff; border-color:var(--ink); }
 .hotspot:hover,.hotspot.active { background:rgba(255,220,0,.42); border-color:#111; outline:3px solid #ffcc00; z-index:30; }
 .hotspot.done { background:rgba(47,154,58,.30) !important; border-color:#2f9a3a !important; opacity:.7; }
 .hotspot.done::after { content:"✓"; position:absolute; right:-11px; top:-13px; z-index:99; width:22px; height:22px; line-height:22px; text-align:center; border-radius:999px; background:#2f9a3a; color:#fff; font-weight:bold; font-size:15px; box-shadow:0 1px 4px rgba(0,0,0,.25); }
+.verificationMark { position:absolute; left:-10px; bottom:-10px; z-index:100; display:grid; place-items:center; width:20px; height:20px; border:2px solid #fff; border-radius:999px; background:#2563a6; color:#fff; font-size:13px; font-weight:900; line-height:1; box-shadow:0 1px 5px rgba(15,23,42,.28); pointer-events:none; }
 .tag { position:absolute; left:0; top:-24px; background:#111; color:white; font-size:13px; font-weight:bold; padding:3px 6px; border-radius:5px; white-space:nowrap; display:none; }
 .hotspot:hover .tag,.hotspot.active .tag { display:block; }
 .resizeHandle { position:absolute; right:-6px; bottom:-6px; width:13px; height:13px; border:2px solid #111; border-radius:4px; background:#fff; cursor:nwse-resize; display:none; }
@@ -95,6 +96,14 @@ body.solder-mode .hotspot { cursor:pointer; }
 body.solder-mode .hotspot .resizeHandle { display:none !important; }
 .side { min-height:0; height:100%; padding:14px; overflow:auto; scrollbar-gutter:stable; }
 .controls { display:grid; gap:8px; margin-bottom:12px; }
+.verificationOverview { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:7px; margin:0 0 12px; }
+.verificationMetric { display:grid; gap:2px; min-width:0; padding:8px 9px; border:1px solid #d7dde5; border-radius:8px; background:#f8fafc; }
+.verificationMetric strong { font-size:17px; line-height:1; color:#111827; }
+.verificationMetric span { color:#667085; font-size:11px; line-height:1.2; }
+.verificationMetric.in_tolerance { border-color:#b9dbc7; background:#f0faf4; }
+.verificationMetric.in_tolerance strong { color:#17613d; }
+.verificationMetric.out_of_tolerance { border-color:#efb5b5; background:#fff3f3; }
+.verificationMetric.out_of_tolerance strong { color:#9b1c1c; }
 .grid2 { display:grid; grid-template-columns:1fr 1fr; gap:8px; }
 .checkPanel { background:#edf8f1; border:1px solid #97c6a6; border-radius:8px; padding:10px 12px; margin:10px 0 12px; font-size:13px; }
 .progressLine { height:12px; background:#dfe7df; border-radius:999px; overflow:hidden; margin-top:7px; }
@@ -112,6 +121,12 @@ body.editor-mode .card { cursor:default; }
 .solderBtn.done { background:#2f9a3a; color:white; border-color:#2f9a3a; }
 .verificationSummary { margin-top:6px; color:#667085; font-size:13px; font-weight:700; }
 .verificationSummary.verified { color:#17613d; }
+.verificationSummaryRow { display:flex; align-items:center; justify-content:space-between; gap:8px; margin-top:7px; }
+.verificationSummaryRow .verificationSummary { min-width:0; margin-top:0; }
+.verificationControlBadge { flex:0 0 auto; display:inline-flex; align-items:center; min-height:22px; padding:3px 7px; border-radius:999px; background:#eef2f6; color:#475467; font-size:11px; font-weight:800; }
+.verificationControlBadge.in_tolerance { background:#d9f2e3; color:#17613d; }
+.verificationControlBadge.out_of_tolerance { background:#fee2e2; color:#9b1c1c; }
+.verificationComment { margin-top:7px; padding:7px 8px; border-left:3px solid #aab7c6; border-radius:0 6px 6px 0; background:#f8fafc; color:#475467; font-size:12px; line-height:1.35; white-space:pre-wrap; overflow-wrap:anywhere; }
 .verificationBtn { width:100%; margin-top:8px; background:#f8fafc; border-color:#c8d1dc; font-weight:700; }
 .toolsPanel { display:grid; gap:8px; padding:10px; margin:0 0 12px; border:1px solid var(--line); border-radius:8px; background:#f8fafc; }
 .toolsPanel label { display:grid; gap:4px; font-size:13px; color:var(--muted); }
@@ -295,5 +310,6 @@ body.editor-mode .card { cursor:default; }
   .imagePickerToolbar { grid-template-columns:1fr; }
   .verificationModal { padding:10px; }
   .verificationNumeric { grid-template-columns:1fr; }
+  .verificationOverview { grid-template-columns:repeat(2,minmax(0,1fr)); }
   .boardwrap { border-left:0; border-right:0; border-radius:0; height:auto; }
 }

@@ -190,6 +190,36 @@
     );
   }
 
+  function matchesFilter(row, filter) {
+    const checked = row?.checked === true;
+    if (filter === "verified") return checked;
+    if (filter === "unverified") return !checked;
+    if (filter === "out_of_tolerance") return row?.status === "out_of_tolerance";
+    return true;
+  }
+
+  function summarize(rows) {
+    const source = Array.isArray(rows) ? rows : [];
+    return source.reduce((summary, row) => {
+      summary.total += 1;
+      if (row?.checked === true) {
+        summary.verified += 1;
+        if (row.status === "in_tolerance") summary.inTolerance += 1;
+        if (row.status === "out_of_tolerance") summary.outOfTolerance += 1;
+        if (row.status === "no_tolerance") summary.noTolerance += 1;
+      }
+      if (String(row?.comment || "").trim()) summary.comments += 1;
+      return summary;
+    }, {
+      total:0,
+      verified:0,
+      inTolerance:0,
+      outOfTolerance:0,
+      noTolerance:0,
+      comments:0
+    });
+  }
+
   return Object.freeze({
     unitsForRef,
     parseNumber,
@@ -199,6 +229,8 @@
     formatNumber,
     formatBaseValue,
     normalizeRecord,
-    normalizeMap
+    normalizeMap,
+    matchesFilter,
+    summarize
   });
 });

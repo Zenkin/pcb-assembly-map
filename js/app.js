@@ -17,7 +17,9 @@ const {
   formatNumber: formatVerificationNumber,
   formatBaseValue: formatVerificationBaseValue,
   normalizeRecord: normalizeVerificationRecord,
-  normalizeMap: normalizeVerificationMap
+  normalizeMap: normalizeVerificationMap,
+  matchesFilter: matchesVerificationFilter,
+  summarize: summarizeVerification
 } = window.SolderMapVerification;
 let projectHandle = null;
 let project = null;
@@ -64,6 +66,8 @@ const componentInspector = document.getElementById("componentInspector");
 const search = document.getElementById("search");
 const stageFilter = document.getElementById("stageFilter");
 const groupFilter = document.getElementById("groupFilter");
+const verificationFilter = document.getElementById("verificationFilter");
+const verificationOverview = document.getElementById("verificationOverview");
 const btnTop = document.getElementById("btnTop");
 const btnBottom = document.getElementById("btnBottom");
 const resetBtn = document.getElementById("resetBtn");
@@ -329,15 +333,25 @@ function verificationControl(c, record = verificationRecord(c)) {
     tolerancePercent:componentTolerance(c)
   });
 }
-function renderVerificationResult(c, record = verificationRecord(c)) {
-  const control = verificationControl(c, record);
-  const labels = {
+function verificationRow(c) {
+  const record = verificationRecord(c);
+  return {
+    checked:record.checked,
+    status:verificationControl(c, record).status,
+    comment:record.comment
+  };
+}
+function verificationStatusLabel(status) {
+  return ({
     no_measurement:"Нет измерения",
     not_comparable:"Сравнение невозможно",
     no_tolerance:"Без допуска",
     in_tolerance:"В допуске",
     out_of_tolerance:"Вне допуска"
-  };
+  })[status] || "Сравнение невозможно";
+}
+function renderVerificationResult(c, record = verificationRecord(c)) {
+  const control = verificationControl(c, record);
   const details = [];
   if (Number.isFinite(control.deltaBase)) {
     const sign = control.deltaBase > 0 ? "+" : "";
@@ -355,7 +369,7 @@ function renderVerificationResult(c, record = verificationRecord(c)) {
   verificationResult.innerHTML = `
     <div class="verificationResultHead">
       <strong>Результат контроля</strong>
-      <span class="verificationResultBadge">${labels[control.status] || "Сравнение невозможно"}</span>
+      <span class="verificationResultBadge">${verificationStatusLabel(control.status)}</span>
     </div>
     ${details.length ? `<div class="verificationResultDetails">${details.join("")}</div>` : ""}
   `;
@@ -408,6 +422,8 @@ function saveVerificationDraft() {
   scheduleSave();
   renderVerificationResult(c, record);
   renderList();
+  renderHotspots();
+  renderVerificationOverview();
   return allValid;
 }
 function openVerification(c) {
@@ -736,7 +752,10 @@ function matches(c) {
   const st = stageFilter.value;
   const gf = groupFilter.value;
   const hay = `${c.ref} ${c.side} ${c.stage} ${c.group} ${c.value} ${c.note}`.toLowerCase();
-  return (!q || hay.includes(q)) && (!st || String(c.stage) === st) && (!gf || c.group === gf);
+  return (!q || hay.includes(q))
+    && (!st || String(c.stage) === st)
+    && (!gf || c.group === gf)
+    && matchesVerificationFilter(verificationRow(c), verificationFilter.value);
 }
 function visibleComponents() {
   return project.components.filter(matches);
@@ -775,6 +794,23 @@ function renderFilePickers() {
   topFilePicker.classList.toggle("hasFile", Boolean(topName));
   bottomFilePicker.classList.toggle("hasFile", Boolean(bottomName));
 }
+function renderVerificationOverview() {
+  const summary = summarizeVerification(project.components.map(verificationRow));
+  const metrics = [
+    ["Всего", summary.total, ""],
+    ["Проверено", summary.verified, ""],
+    ["В допуске", summary.inTolerance, "in_tolerance"],
+    ["Вне допуска", summary.outOfTolerance, "out_of_tolerance"],
+    ["Без допуска", summary.noTolerance, ""],
+    ["С комментариями", summary.comments, ""]
+  ];
+  verificationOverview.innerHTML = metrics.map(([label, value, tone]) => `
+    <div class="verificationMetric ${tone}">
+      <strong>${value}</strong>
+      <span>${label}</span>
+    </div>
+  `).join("");
+}
 function renderHotspots() {
   board.querySelectorAll(".hotspot").forEach(e => e.remove());
   if (!project) return;
@@ -785,7 +821,7 @@ function renderHotspots() {
     d.dataset.side = c.side;
     Object.assign(d.style, {left:`${c.x}px`, top:`${c.y}px`, width:`${c.w}px`, height:`${c.h}px`});
     d.title = `${c.ref} - ${c.value || ""}`;
-    d.innerHTML = `<span class="tag">${escapeHtml(c.ref)}</span><span class="resizeHandle" aria-hidden="true"></span>`;
+    d.innerHTML = `<span class="tag">${escapeHtml(c.ref)}</span>${isVerified(c) ? `<span class="verificationMark" title="Проверен" aria-label="Проверен">✓</span>` : ""}<span class="resizeHandle" aria-hidden="true"></span>`;
     d.addEventListener("mousedown", ev => startGeometryEdit(ev, c, d));
     d.addEventListener("click", ev => {
       ev.stopPropagation();
@@ -862,8 +898,9 @@ function renderList() {
       card.dataset.side = c.side;
       const solderButton = appMode === "solder" ? `<button class="solderBtn ${isDone(c) ? "done" : ""}" type="button">${isDone(c) ? "✓ Припаяно" : "○ Не припаяно"}</button>` : "";
       const record = verificationRecord(c);
+      const control = verificationControl(c, record);
       const actualValue = record.actualValue === null || record.actualValue === undefined ? "" : `${record.actualValue} ${record.unit || ""}`.trim();
-      card.innerHTML = `<div class="ref">${escapeHtml(c.ref)}</div><div class="meta">${escapeHtml(c.side)} · ${escapeHtml(c.group || "Без группы")} · ${escapeHtml(c.value || "Без номинала")}</div><div class="verificationSummary ${isVerified(c) ? "verified" : ""}">${isVerified(c) ? "✓ Проверен" : "○ Не проверен"}${actualValue ? ` · ${escapeHtml(actualValue)}` : ""}</div><div class="note">${escapeHtml(c.note)}</div><button class="verificationBtn" type="button">Проверка</button>${solderButton}`;
+      card.innerHTML = `<div class="ref">${escapeHtml(c.ref)}</div><div class="meta">${escapeHtml(c.side)} · ${escapeHtml(c.group || "Без группы")} · ${escapeHtml(c.value || "Без номинала")}</div><div class="verificationSummaryRow"><div class="verificationSummary ${isVerified(c) ? "verified" : ""}">${isVerified(c) ? "✓ Проверен" : "○ Не проверен"}${actualValue ? ` · ${escapeHtml(actualValue)}` : ""}</div><span class="verificationControlBadge ${control.status}">${verificationStatusLabel(control.status)}</span></div>${record.comment ? `<div class="verificationComment">${escapeHtml(record.comment)}</div>` : ""}<div class="note">${escapeHtml(c.note)}</div><button class="verificationBtn" type="button">Проверка</button>${solderButton}`;
       card.addEventListener("click", ev => {
         if (ev.target.closest("button")) return;
         selectedKey = compKey(c);
@@ -890,6 +927,7 @@ function renderAll() {
   renderFilePickers();
   renderStages();
   renderGroups();
+  renderVerificationOverview();
   renderList();
   renderHotspots();
   renderInspector();
@@ -1420,7 +1458,7 @@ groupList.addEventListener("click", ev => {
   if (!btn?.dataset.group) return;
   deleteGroup(btn.dataset.group);
 });
-[search, stageFilter, groupFilter].forEach(el => {
+[search, stageFilter, groupFilter, verificationFilter].forEach(el => {
   el.addEventListener("input", renderAll);
   el.addEventListener("change", renderAll);
 });

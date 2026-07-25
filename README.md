@@ -14,6 +14,8 @@ The editor lets an operator:
   and verification comment;
 - compare resistor and capacitor measurements with BOM values and percentage
   tolerances, including automatic unit conversion;
+- see verification marks on the board, filter components by verification
+  state, and review the board-wide verification summary;
 - keep the project data and source images together in a local folder.
 
 ## Requirements

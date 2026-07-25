@@ -97,7 +97,15 @@
       <input id="search" placeholder="Поиск: R15, U1, 100 нФ, BAS16, RS-485...">
       <select id="stageFilter"><option value="">Все этапы</option></select>
       <select id="groupFilter"><option value="">Все группы</option></select>
+      <select id="verificationFilter" aria-label="Фильтр проверки компонентов">
+        <option value="">Все проверки</option>
+        <option value="verified">Проверен</option>
+        <option value="unverified">Не проверен</option>
+        <option value="out_of_tolerance">Вне допуска</option>
+      </select>
     </div>
+
+    <section class="verificationOverview" id="verificationOverview" aria-label="Сводка проверки платы"></section>
 
     <section class="groupPanel editorOnly">
       <div class="sectionTitle">Этапы пайки</div>
