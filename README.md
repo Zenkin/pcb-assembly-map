@@ -16,6 +16,8 @@ The editor lets an operator:
   tolerances, including automatic unit conversion;
 - see verification marks on the board, filter components by verification
   state, and review the board-wide verification summary;
+- export all component verification results to printable PDF, UTF-8 CSV, or
+  filterable Excel `.xlsx`;
 - keep the project data and source images together in a local folder.
 
 ## Requirements
@@ -64,6 +66,7 @@ history remains compact and reproducible.
 index.html       Renderer markup
 css/styles.css   Application styles
 js/app.js        Renderer state and interactions
+js/report.js     Verification report rows and CSV/XLSX serialization
 preload.js       Safe renderer-to-main IPC bridge
 main.js          Electron lifecycle, filesystem and project IPC
 assets/          Application icons
