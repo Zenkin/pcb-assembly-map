@@ -21,6 +21,9 @@ const {
   matchesFilter: matchesVerificationFilter,
   summarize: summarizeVerification
 } = window.SolderMapVerification;
+const {
+  buildRows: buildVerificationReportRows
+} = window.SolderMapReport;
 let projectHandle = null;
 let project = null;
 let currentSide = "TOP";
@@ -68,6 +71,8 @@ const stageFilter = document.getElementById("stageFilter");
 const groupFilter = document.getElementById("groupFilter");
 const verificationFilter = document.getElementById("verificationFilter");
 const verificationOverview = document.getElementById("verificationOverview");
+const verificationExportStatus = document.getElementById("verificationExportStatus");
+const verificationExportButtons = [...document.querySelectorAll("[data-report-format]")];
 const btnTop = document.getElementById("btnTop");
 const btnBottom = document.getElementById("btnBottom");
 const resetBtn = document.getElementById("resetBtn");
@@ -811,6 +816,41 @@ function renderVerificationOverview() {
     </div>
   `).join("");
 }
+async function exportVerificationReport(format) {
+  if (!project || !window.projectApi?.exportVerificationReport) {
+    notify("Экспорт доступен в настольном приложении SolderMap.", "warning");
+    return;
+  }
+  verificationExportButtons.forEach(button => {
+    button.disabled = true;
+  });
+  verificationExportStatus.className = "";
+  verificationExportStatus.textContent = "Подготовка...";
+  try {
+    await saveProjectNow();
+    const result = await window.projectApi.exportVerificationReport({
+      format,
+      projectName:project.name,
+      rows:buildVerificationReportRows(project)
+    });
+    if (result?.canceled) {
+      verificationExportStatus.textContent = "Отменено";
+      return;
+    }
+    const fileName = String(result?.filePath || "").split(/[\\/]/).pop();
+    verificationExportStatus.textContent = fileName ? `Сохранено: ${fileName}` : "Отчёт сохранён";
+    notify("Отчёт по проверке сохранён.", "success");
+  } catch (error) {
+    console.error(error);
+    verificationExportStatus.className = "error";
+    verificationExportStatus.textContent = "Ошибка экспорта";
+    notify("Не удалось сохранить отчёт.", "warning");
+  } finally {
+    verificationExportButtons.forEach(button => {
+      button.disabled = false;
+    });
+  }
+}
 function renderHotspots() {
   board.querySelectorAll(".hotspot").forEach(e => e.remove());
   if (!project) return;
@@ -1461,6 +1501,9 @@ groupList.addEventListener("click", ev => {
 [search, stageFilter, groupFilter, verificationFilter].forEach(el => {
   el.addEventListener("input", renderAll);
   el.addEventListener("change", renderAll);
+});
+verificationExportButtons.forEach(button => {
+  button.addEventListener("click", () => exportVerificationReport(button.dataset.reportFormat));
 });
 componentInspector.addEventListener("submit", ev => {
   if (!ev.target.classList.contains("inspectorForm")) return;

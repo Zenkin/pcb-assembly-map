@@ -106,6 +106,17 @@
     </div>
 
     <section class="verificationOverview" id="verificationOverview" aria-label="Сводка проверки платы"></section>
+    <section class="verificationExport" aria-label="Экспорт проверки компонентов">
+      <div class="verificationExportHead">
+        <strong>Отчёт по проверке</strong>
+        <span id="verificationExportStatus" role="status" aria-live="polite"></span>
+      </div>
+      <div class="verificationExportActions">
+        <button type="button" data-report-format="csv">CSV</button>
+        <button type="button" data-report-format="xlsx">Excel</button>
+        <button type="button" data-report-format="pdf">PDF</button>
+      </div>
+    </section>
 
     <section class="groupPanel editorOnly">
       <div class="sectionTitle">Этапы пайки</div>
@@ -241,6 +252,7 @@
   </section>
 </div>
 <script src="js/verification.js"></script>
+<script src="js/report.js"></script>
 <script src="js/app.js"></script>
 </body>
 </html>

@@ -9,7 +9,8 @@ contextBridge.exposeInMainWorld("projectApi", {
   writeProject: (folderPath, project) => ipcRenderer.invoke("project:write", folderPath, project),
   saveImage: (folderPath, fileName, bytes) => ipcRenderer.invoke("project:save-image", folderPath, fileName, bytes),
   copyImage: (folderPath, sourcePath, fileName) => ipcRenderer.invoke("project:copy-image", folderPath, sourcePath, fileName),
-  imageUrl: (folderPath, fileName) => ipcRenderer.invoke("project:image-url", folderPath, fileName)
+  imageUrl: (folderPath, fileName) => ipcRenderer.invoke("project:image-url", folderPath, fileName),
+  exportVerificationReport: payload => ipcRenderer.invoke("report:export", payload)
 });
 
 contextBridge.exposeInMainWorld("fileBrowserApi", {

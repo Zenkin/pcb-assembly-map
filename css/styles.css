@@ -104,6 +104,14 @@ body.solder-mode .hotspot .resizeHandle { display:none !important; }
 .verificationMetric.in_tolerance strong { color:#17613d; }
 .verificationMetric.out_of_tolerance { border-color:#efb5b5; background:#fff3f3; }
 .verificationMetric.out_of_tolerance strong { color:#9b1c1c; }
+.verificationExport { display:grid; gap:8px; margin:0 0 12px; padding:10px; border:1px solid #d7dde5; border-radius:8px; background:#fff; }
+.verificationExportHead { display:flex; align-items:center; justify-content:space-between; gap:8px; min-width:0; }
+.verificationExportHead strong { font-size:13px; }
+.verificationExportHead span { min-width:0; overflow:hidden; color:#667085; font-size:11px; text-align:right; text-overflow:ellipsis; white-space:nowrap; }
+.verificationExportHead span.error { color:#9b1c1c; }
+.verificationExportActions { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:7px; }
+.verificationExportActions button { min-width:0; padding:7px 5px; background:#f8fafc; font-weight:700; }
+.verificationExportActions button:disabled { cursor:wait; opacity:.62; }
 .grid2 { display:grid; grid-template-columns:1fr 1fr; gap:8px; }
 .checkPanel { background:#edf8f1; border:1px solid #97c6a6; border-radius:8px; padding:10px 12px; margin:10px 0 12px; font-size:13px; }
 .progressLine { height:12px; background:#dfe7df; border-radius:999px; overflow:hidden; margin-top:7px; }

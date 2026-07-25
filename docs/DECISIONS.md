@@ -67,3 +67,22 @@ extension does not remove or reinterpret existing fields.
 Project deletion and future destructive filesystem operations must resolve and
 validate their targets against the expected project root before execution.
 Renderer-provided paths are not trusted implicitly.
+
+## D-006 — Verification report export
+
+**Status:** accepted
+
+- The renderer builds one canonical report row per project component from the
+  complete project state, independently of active interface filters.
+- The report schema is fixed to the eleven fields approved in the component
+  verification specification.
+- File selection and writes remain in the Electron main process behind one
+  allowlisted preload method.
+- CSV uses UTF-8 with a byte-order mark and semicolon delimiters.
+- XLSX is generated as a minimal Office Open XML package by the local report
+  module, with a frozen header row and an auto-filter, without requiring
+  Microsoft Office or a runtime export dependency.
+- PDF is rendered by an isolated hidden Electron window and `printToPDF`, with
+  a repeated table header and numbered pages.
+- The main process allowlists formats and report fields and limits row, cell,
+  and total payload size before writing a file.
