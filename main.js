@@ -15,8 +15,8 @@ const REPORT_FORMATS = Object.freeze({
   pdf:{extension:"pdf", label:"PDF", filter:"PDF"}
 });
 const MAX_REPORT_ROWS = 100000;
-const MAX_REPORT_CELL_LENGTH = 20000;
-const MAX_REPORT_TOTAL_LENGTH = 50000000;
+const MAX_REPORT_CELL_LENGTH = 200000;
+const MAX_REPORT_TOTAL_LENGTH = 25000000;
 
 function projectStorePath() {
   return path.join(app.getPath("documents"), PROJECTS_ROOT_NAME);
@@ -45,7 +45,8 @@ function normalizeReportRows(value) {
   let totalLength = 0;
   return value.map(row => Object.fromEntries(
     report.COLUMNS.map(column => {
-      const cell = String(row?.[column.key] ?? "").slice(0, MAX_REPORT_CELL_LENGTH);
+      const cell = String(row?.[column.key] ?? "");
+      if (cell.length > MAX_REPORT_CELL_LENGTH) throw new Error("Report cell is too large.");
       totalLength += cell.length;
       if (totalLength > MAX_REPORT_TOTAL_LENGTH) throw new Error("Report data is too large.");
       return [column.key, cell];
@@ -114,17 +115,21 @@ async function createExcelReport(rows, projectName, generatedAt) {
 }
 
 async function createPdfReport(rows, projectName, generatedAt) {
-  const reportWindow = new BrowserWindow({
-    show:false,
-    webPreferences:{
-      contextIsolation:true,
-      nodeIntegration:false,
-      sandbox:true
-    }
-  });
+  const temporaryFolder = await fs.mkdtemp(path.join(app.getPath("temp"), "soldermap-report-"));
+  const htmlPath = path.join(temporaryFolder, "report.html");
+  let reportWindow = null;
   try {
+    reportWindow = new BrowserWindow({
+      show:false,
+      webPreferences:{
+        contextIsolation:true,
+        nodeIntegration:false,
+        sandbox:true
+      }
+    });
     const html = reportHtml(projectName, generatedAt, rows);
-    await reportWindow.loadURL(`data:text/html;charset=utf-8,${encodeURIComponent(html)}`);
+    await fs.writeFile(htmlPath, html, "utf8");
+    await reportWindow.loadFile(htmlPath);
     return await reportWindow.webContents.printToPDF({
       pageSize:"A4",
       landscape:true,
@@ -136,7 +141,8 @@ async function createPdfReport(rows, projectName, generatedAt) {
       margins:{top:0.55, bottom:0.59, left:0.31, right:0.31}
     });
   } finally {
-    if (!reportWindow.isDestroyed()) reportWindow.destroy();
+    if (reportWindow && !reportWindow.isDestroyed()) reportWindow.destroy();
+    await fs.rm(temporaryFolder, {recursive:true, force:true});
   }
 }
 
