@@ -6,7 +6,7 @@
   "private": true,
   "scripts": {
     "start": "electron .",
-    "check": "node --check main.js && node --check preload.js && node --check js/verification.js && node --check js/app.js && node --test",
+    "check": "node --check main.js && node --check preload.js && node --check js/verification.js && node --check js/report.js && node --check js/app.js && node --test",
     "build": "electron-builder --win",
     "build:linux": "electron-builder --linux",
     "build:linux:appimage": "electron-builder --linux AppImage",
