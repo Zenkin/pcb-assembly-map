@@ -95,6 +95,7 @@ js/app.js        Renderer state and interactions
 js/report.js     Verification report rows and CSV/XLSX serialization
 js/bom.js        BOM parsing, update planning, backups and restoration
 js/matching-*.js Automatic footprint matching, exchange format and result view
+js/pick-and-place.js Placement-table adapter for expected matching footprints
 preload.js       Safe renderer-to-main IPC bridge
 main.js          Electron lifecycle, filesystem and project IPC
 assets/          Application icons
@@ -108,6 +109,7 @@ assets/          Application icons
 - [Matching coordinate calibration](docs/specifications/matching-coordinate-calibration.md) — explicit affine conversion from millimetres to source-image pixels.
 - [Matching application plan](docs/specifications/matching-application-plan.md) — safe preview and stale-state validation before pixel geometry is changed.
 - [Matching calibration workflow](docs/specifications/matching-calibration-workflow.md) — operator control-point entry, visual preview, and confirmed application.
+- [Pick and Place import](docs/specifications/pick-and-place-import.md) — supported placement-table columns, coordinate units, normalization, and validation.
 
 ## Development workflow
 
