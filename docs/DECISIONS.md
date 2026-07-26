@@ -135,9 +135,11 @@ Renderer-provided paths are not trusted implicitly.
   project component is changed.
 - Only unambiguous exact and acceptable matches with known detected geometry
   are eligible for automatic application.
-- Uncertain, ambiguous, unmatched, duplicate-reference, reused-component,
-  reused-footprint, and out-of-image results are skipped with explicit
-  reasons.
+- An uncertain or ambiguous in-radius candidate with known detected geometry
+  becomes eligible only after the operator explicitly selects it. This
+  confirmation remains transient and is not trusted from an imported file.
+- Unconfirmed, unmatched, duplicate-reference, reused-component,
+  reused-footprint, and out-of-image results are skipped with explicit reasons.
 - Found-footprint pad bounds are transformed by the matching side's accepted
   calibration and rounded outward to an integer source-image rectangle.
 - Proposed rectangles are rejected rather than clipped when they cross an
@@ -164,3 +166,21 @@ Renderer-provided paths are not trusted implicitly.
   plan's stale-state checks before project components are replaced.
 - A successful application is one undoable project edit and is saved through
   the existing project persistence path.
+
+## D-011 — Real-source matching import
+
+**Status:** accepted
+
+- Pick and Place and recognition results are selected independently through
+  allowlisted preload methods; renderer code receives only a file name and
+  bounded UTF-8 text.
+- Both inputs are normalized to the existing millimetre matching-session
+  contract. They remain transient and are not persisted in `project.json`.
+- Recognition JSON accepts canonical found footprints and common detection
+  containers. Recognition tables require centre X, centre Y, and side;
+  width and height are optional but required for automatic placement geometry.
+- Exact and acceptable results remain automatic. Uncertain and ambiguous
+  candidates require an explicit in-interface selection before planning.
+- A selected candidate must be on the same side, inside the calculated search
+  radius, and contain non-empty geometry. Existing reuse and stale-plan
+  protections continue to apply.

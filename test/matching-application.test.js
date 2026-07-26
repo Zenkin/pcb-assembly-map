@@ -176,6 +176,17 @@ test("skips uncertain, ambiguous, and unmatched results", () => {
   assert.deepEqual(plan.summary.byReason, {status_not_applicable:statuses.length});
 });
 
+test("applies an uncertain result only after explicit operator confirmation", () => {
+  const input = planInput();
+  input.session.results[0].status = "matched_uncertain_geometry";
+  assert.equal(application.createApplicationPlan(input).summary.updates, 0);
+
+  input.session.results[0].operatorConfirmed = true;
+  const plan = application.createApplicationPlan(input);
+  assert.equal(plan.summary.updates, 1);
+  assert.equal(plan.entries[0].status, "matched_uncertain_geometry");
+});
+
 test("reports missing and duplicate project components without guessing", () => {
   const found = footprint("found-1", "TOP", 5, 4);
   const input = planInput({

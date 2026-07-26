@@ -125,6 +125,14 @@ body.solder-mode .hotspot .resizeHandle { display:none !important; }
 .matchingManagement span { min-width:0; overflow:hidden; color:#667085; font-size:11px; text-align:right; text-overflow:ellipsis; white-space:nowrap; }
 .matchingManagement span.error { color:#9b1c1c; }
 .matchingManagement button { width:100%; min-width:0; padding:7px 5px; background:#f8fafc; font-weight:700; }
+.matchingSourceGrid { display:grid !important; grid-template-columns:1fr 1fr; gap:6px; }
+.matchingSourceGrid button { display:grid; gap:2px; min-height:52px; padding:7px 8px; text-align:left; }
+.matchingSourceGrid button strong { font-size:11px; }
+.matchingSourceGrid button small { min-width:0; overflow:hidden; color:#667085; font-size:10px; font-weight:500; text-overflow:ellipsis; white-space:nowrap; }
+.matchingManagement .primaryBtn { border-color:#155eef; background:#155eef; color:#fff; }
+.matchingManagement .matchingAdvancedBtn { padding:3px 5px; border:0; background:transparent; color:#667085; font-size:10px; font-weight:600; }
+.matchingResolution { min-width:150px; max-width:220px; padding:6px 8px; border:1px solid #cfd7e3; border-radius:7px; background:#fff; font:inherit; }
+.matchingResolution.confirmed { border-color:#12b76a; background:#ecfdf3; }
 .dataModal[hidden] { display:none; }
 .dataModal { position:fixed; inset:0; z-index:380; display:grid; place-items:center; padding:20px; }
 .dataModalBackdrop { position:absolute; inset:0; background:rgba(15,23,42,.3); backdrop-filter:blur(10px); }
@@ -145,7 +153,7 @@ body.solder-mode .hotspot .resizeHandle { display:none !important; }
 .dataModalFooter { display:grid; grid-template-columns:auto minmax(0,1fr) auto auto; gap:8px; align-items:center; padding:12px 18px; border-top:1px solid #e4e8ee; background:#f8fafc; }
 .dataModalFooter button { min-width:112px; }
 .matchingPanel { width:min(980px,100%); }
-.matchingSummary { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:8px; }
+.matchingSummary { display:grid; grid-template-columns:repeat(5,minmax(0,1fr)); gap:8px; }
 .matchingSummaryItem { display:grid; gap:3px; padding:10px 11px; border:1px solid #d7dde5; border-radius:10px; background:#f8fafc; }
 .matchingSummaryItem strong { font-size:20px; line-height:1; }
 .matchingSummaryItem span { color:#667085; font-size:12px; }

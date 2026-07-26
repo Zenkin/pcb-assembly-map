@@ -19,6 +19,24 @@ const MAX_REPORT_CELL_LENGTH = 200000;
 const MAX_REPORT_TOTAL_LENGTH = 25000000;
 const MAX_BOM_FILE_SIZE = 10 * 1024 * 1024;
 const MAX_MATCHING_SESSION_FILE_SIZE = 10 * 1024 * 1024;
+const MATCHING_SOURCE_DIALOGS = Object.freeze({
+  placement:{
+    title:"Выберите Pick and Place",
+    buttonLabel:"Открыть Pick and Place",
+    filters:[
+      {name:"Pick and Place", extensions:["csv", "tsv", "txt"]},
+      {name:"Все файлы", extensions:["*"]}
+    ]
+  },
+  recognition:{
+    title:"Выберите результаты распознавания",
+    buttonLabel:"Открыть результаты",
+    filters:[
+      {name:"Результаты распознавания", extensions:["json", "csv", "tsv", "txt"]},
+      {name:"Все файлы", extensions:["*"]}
+    ]
+  }
+});
 
 function projectStorePath() {
   return path.join(app.getPath("documents"), PROJECTS_ROOT_NAME);
@@ -281,6 +299,30 @@ ipcMain.handle("matching:select-file", async event => {
   const stat = await fs.stat(filePath);
   if (!stat.isFile() || stat.size > MAX_MATCHING_SESSION_FILE_SIZE) {
     throw new Error("Matching session file is too large or is not a regular file.");
+  }
+  return {
+    name:path.basename(filePath),
+    text:await fs.readFile(filePath, "utf8")
+  };
+});
+
+ipcMain.handle("matching:select-source-file", async (event, kind) => {
+  const sourceKind = String(kind ?? "");
+  const dialogOptions = MATCHING_SOURCE_DIALOGS[sourceKind];
+  if (!dialogOptions) throw new Error("Unsupported matching source kind.");
+  const parentWindow = BrowserWindow.fromWebContents(event.sender);
+  const options = {
+    ...dialogOptions,
+    properties:["openFile"]
+  };
+  const result = parentWindow
+    ? await dialog.showOpenDialog(parentWindow, options)
+    : await dialog.showOpenDialog(options);
+  if (result.canceled || !result.filePaths[0]) return null;
+  const filePath = result.filePaths[0];
+  const stat = await fs.stat(filePath);
+  if (!stat.isFile() || stat.size > MAX_MATCHING_SESSION_FILE_SIZE) {
+    throw new Error("Matching source file is too large or is not a regular file.");
   }
   return {
     name:path.basename(filePath),

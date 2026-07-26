@@ -16,6 +16,11 @@
     "matched_acceptable"
   ]);
 
+  function applicableResult(result) {
+    return APPLICABLE_STATUSES.includes(result?.status)
+      || result?.operatorConfirmed === true;
+  }
+
   function requiredObject(value, name) {
     if (!value || typeof value !== "object" || Array.isArray(value)) {
       throw new TypeError(`${name} must be an object`);
@@ -190,7 +195,7 @@
   function selectedUsage(results) {
     const usage = new Map();
     results.forEach(result => {
-      if (!APPLICABLE_STATUSES.includes(result?.status)) return;
+      if (!applicableResult(result)) return;
       const id = String(result.selectedFoundId ?? "").trim();
       if (!id) return;
       usage.set(id, (usage.get(id) || 0) + 1);
@@ -201,7 +206,7 @@
   function componentUsage(results) {
     const usage = new Map();
     results.forEach(result => {
-      if (!APPLICABLE_STATUSES.includes(result?.status)) return;
+      if (!applicableResult(result)) return;
       const side = normalizeSide(result.side || result.expected?.side, "result.side");
       const ref = result.expectedRef || result.expected?.ref;
       const key = componentKey(side, ref);
@@ -230,7 +235,7 @@
 
     const entries = session.results.map((result, resultIndex) => {
       const item = requiredObject(result, `session.results[${resultIndex}]`);
-      if (!APPLICABLE_STATUSES.includes(item.status)) {
+      if (!applicableResult(item)) {
         return skipped(item, "status_not_applicable");
       }
       const ref = String(item.expectedRef || item.expected?.ref || "").trim();
@@ -358,6 +363,7 @@
   return Object.freeze({
     PLAN_VERSION,
     APPLICABLE_STATUSES,
+    applicableResult,
     componentKey,
     geometryBoundsAtCenter,
     enclosingPixelBox,

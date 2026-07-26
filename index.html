@@ -131,9 +131,22 @@
     <section class="matchingManagement editorOnly" aria-label="Автоматическое сопоставление компонентов">
       <div>
         <strong>Автосопоставление</strong>
-        <span id="matchingStatus">Сеанс не открыт</span>
+        <span id="matchingStatus">Исходные данные не выбраны</span>
       </div>
-      <button id="importMatchingBtn" type="button">Открыть сеанс JSON</button>
+      <div class="matchingSourceGrid">
+        <button id="importPlacementBtn" type="button">
+          <strong>1. Pick and Place</strong>
+          <small id="placementSourceStatus">Выбрать CSV/TSV</small>
+        </button>
+        <button id="importRecognitionBtn" type="button">
+          <strong>2. Распознавание</strong>
+          <small id="recognitionSourceStatus">Выбрать JSON/CSV</small>
+        </button>
+      </div>
+      <button id="runMatchingBtn" class="primaryBtn" type="button" disabled>Запустить сопоставление</button>
+      <button id="importMatchingBtn" class="matchingAdvancedBtn" type="button">Открыть готовый сеанс JSON</button>
+      <input id="placementFileInput" class="nativeFileInput" type="file" accept=".csv,.tsv,.txt,text/csv,text/tab-separated-values">
+      <input id="recognitionFileInput" class="nativeFileInput" type="file" accept=".json,.csv,.tsv,.txt,application/json,text/csv,text/tab-separated-values">
       <input id="matchingFileInput" class="nativeFileInput" type="file" accept=".json,application/json">
     </section>
 
@@ -243,7 +256,7 @@
       <div class="matchingSummary" id="matchingSummary"></div>
       <div class="matchingTableWrap">
         <table class="matchingTable">
-          <thead><tr><th>Компонент</th><th>Сторона</th><th>Результат</th><th>Найденное место</th><th>В радиусе</th></tr></thead>
+          <thead><tr><th>Компонент</th><th>Сторона</th><th>Результат</th><th>Найденное место</th><th>Решение</th></tr></thead>
           <tbody id="matchingResults"></tbody>
         </table>
       </div>
@@ -411,6 +424,9 @@
 <script src="js/automatic-matching.js"></script>
 <script src="js/matching-session.js"></script>
 <script src="js/matching-format.js"></script>
+<script src="js/pick-and-place.js"></script>
+<script src="js/recognition-import.js"></script>
+<script src="js/matching-resolution.js"></script>
 <script src="js/matching-view.js"></script>
 <script src="js/matching-calibration.js"></script>
 <script src="js/matching-application.js"></script>
