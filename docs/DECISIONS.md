@@ -145,4 +145,22 @@ Renderer-provided paths are not trusted implicitly.
 - Applying a plan preserves non-geometry component fields and rejects stale
   previews when component identity or geometry has changed.
 - User-interface preview, calibration entry, confirmation, and project saving
-  remain a separate renderer workflow.
+  use a separate renderer workflow.
+
+## D-010 — Matching calibration workflow
+
+**Status:** accepted
+
+- An opened matching session remains transient renderer state and is never
+  added to `project.json`.
+- TOP and BOTTOM are calibrated independently from at least three control
+  points. Millimetre coordinates come from the session when possible; pixel
+  coordinates can be selected directly on the corresponding project image.
+- Fitted calibration diagnostics show RMS error, maximum error, and whether
+  the transform is reflected.
+- The preview overlays current and proposed component rectangles on the source
+  image and lists every update or explicit skip reason.
+- Applying requires a separate confirmation and uses the versioned application
+  plan's stale-state checks before project components are replaced.
+- A successful application is one undoable project edit and is saved through
+  the existing project persistence path.
