@@ -162,6 +162,65 @@ body.solder-mode .hotspot .resizeHandle { display:none !important; }
 .matchingStatusBadge.uncertain,.matchingStatusBadge.ambiguous { background:#fff1cc; color:#725b16; }
 .matchingStatusBadge.unmatched { background:#fee2e2; color:#9b1c1c; }
 #matchingDetails { color:#667085; font-size:12px; }
+.matchingWorkflowModal { z-index:390; }
+.matchingWorkflowPanel { width:min(1320px,100%); height:min(860px,calc(100vh - 40px)); }
+.matchingWorkflowBody { min-height:0; display:grid; grid-template-columns:minmax(330px,410px) minmax(0,1fr); overflow:hidden; }
+.matchingCalibrationPane { min-height:0; padding:16px; overflow:auto; border-right:1px solid #e4e8ee; background:#fbfcfe; }
+.matchingSideTabs { display:grid; grid-template-columns:1fr 1fr; gap:7px; }
+.matchingSideTabs button.active { background:#111827; border-color:#111827; color:#fff; }
+.matchingSideTabs button:disabled { opacity:.42; cursor:not-allowed; }
+.matchingInstruction { margin:12px 0; color:#667085; font-size:13px; line-height:1.45; }
+.matchingResidualField { display:grid; gap:5px; color:#667085; font-size:12px; }
+.matchingResidualField input { background:#fff; }
+.matchingControlPoints { display:grid; gap:8px; margin-top:12px; }
+.matchingControlPoint { display:grid; gap:7px; padding:10px; border:1px solid #d7dde5; border-radius:10px; background:#fff; }
+.matchingControlPointHead { display:flex; align-items:center; justify-content:space-between; gap:8px; }
+.matchingControlPointHead strong { min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-size:13px; }
+.matchingControlPointHead button { width:28px; height:28px; min-height:28px; padding:0; border:0; background:#f1f5f9; color:#667085; }
+.matchingControlPointGrid { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:6px; }
+.matchingControlPointGrid label { display:grid; gap:3px; color:#667085; font-size:10px; }
+.matchingControlPointGrid input { min-width:0; min-height:34px; padding:6px; font-size:12px; }
+.matchingPointPick { width:100%; min-height:34px; padding:6px 8px; font-size:12px; font-weight:700; }
+.matchingPointPick.active { background:#2563a6; border-color:#2563a6; color:#fff; }
+.matchingCalibrationActions { display:grid; grid-template-columns:1fr 1fr; gap:7px; margin-top:10px; }
+.matchingCalibrationStatus { min-height:44px; margin-top:10px; padding:9px 10px; border:1px solid #d7dde5; border-radius:9px; background:#fff; color:#667085; font-size:12px; line-height:1.4; white-space:pre-line; }
+.matchingCalibrationStatus.success { border-color:#b9dbc7; background:#f0faf4; color:#17613d; }
+.matchingCalibrationStatus.error { border-color:#efb5b5; background:#fff3f3; color:#9b1c1c; }
+.matchingPlanSummary { display:grid; grid-template-columns:1fr 1fr; gap:7px; margin-top:10px; }
+.matchingPlanMetric { display:grid; gap:2px; padding:9px 10px; border:1px solid #d7dde5; border-radius:9px; background:#fff; }
+.matchingPlanMetric strong { font-size:18px; line-height:1; }
+.matchingPlanMetric span { color:#667085; font-size:11px; }
+.matchingPlanMetric.update { border-color:#b9dbc7; background:#f0faf4; color:#17613d; }
+.matchingPlanMetric.skip { border-color:#e4c86b; background:#fffbea; color:#725b16; }
+.matchingPreviewPane { min-width:0; min-height:0; display:grid; grid-template-rows:auto minmax(260px,1fr) auto minmax(0,180px); gap:10px; padding:16px; overflow:hidden; }
+.matchingPreviewToolbar { display:flex; align-items:center; justify-content:space-between; gap:12px; }
+.matchingPreviewToolbar span { color:#667085; font-size:12px; text-align:right; }
+.matchingPreviewToolbar span.picking { color:#2563a6; font-weight:700; }
+.matchingPreviewViewport { position:relative; min-height:0; display:grid; place-items:center; overflow:auto; border:1px solid #d7dde5; border-radius:12px; background:#e8edf3; }
+.matchingPreviewStage { position:relative; width:100%; max-width:100%; background:#fff; cursor:crosshair; box-shadow:0 10px 30px rgba(15,23,42,.12); }
+.matchingPreviewStage img { position:absolute; inset:0; width:100%; height:100%; display:block; object-fit:fill; user-select:none; -webkit-user-drag:none; }
+.matchingPreviewOverlay { position:absolute; inset:0; pointer-events:none; }
+.matchingPreviewEmpty { padding:24px; color:#667085; text-align:center; line-height:1.5; }
+.matchingPreviewBox { position:absolute; border-radius:4px; pointer-events:none; }
+.matchingPreviewBox.before { border:2px dashed rgba(71,84,103,.8); background:rgba(71,84,103,.08); }
+.matchingPreviewBox.after { border:2px solid #1f7a4d; background:rgba(31,122,77,.16); box-shadow:0 0 0 1px rgba(255,255,255,.8) inset; }
+.matchingPreviewBox span { position:absolute; left:0; bottom:100%; max-width:150px; padding:2px 5px; overflow:hidden; border-radius:4px 4px 0 0; background:#145c3b; color:#fff; font-size:10px; font-weight:800; text-overflow:ellipsis; white-space:nowrap; }
+.matchingPreviewPoint { position:absolute; width:16px; height:16px; margin:-8px 0 0 -8px; border:3px solid #fff; border-radius:999px; background:#2563a6; box-shadow:0 1px 5px rgba(15,23,42,.45); }
+.matchingPreviewPoint span { position:absolute; left:12px; top:-8px; padding:2px 5px; border-radius:4px; background:#2563a6; color:#fff; font-size:10px; font-weight:800; white-space:nowrap; }
+.matchingPreviewLegend { display:flex; flex-wrap:wrap; gap:12px; color:#667085; font-size:11px; }
+.matchingPreviewLegend span { display:inline-flex; align-items:center; gap:5px; }
+.matchingPreviewLegend i { width:16px; height:10px; border-radius:3px; }
+.matchingPreviewLegend i.before { border:2px dashed #667085; }
+.matchingPreviewLegend i.after { border:2px solid #1f7a4d; background:rgba(31,122,77,.16); }
+.matchingPreviewLegend i.point { width:10px; height:10px; border-radius:999px; background:#2563a6; }
+.matchingPlanList { min-height:0; overflow:auto; border:1px solid #d7dde5; border-radius:10px; background:#fff; }
+.matchingPlanRow { display:grid; grid-template-columns:70px 110px minmax(0,1fr); gap:8px; padding:7px 9px; border-bottom:1px solid #e4e8ee; font-size:12px; }
+.matchingPlanRow:last-child { border-bottom:0; }
+.matchingPlanRow span { color:#667085; }
+.matchingPlanRow.update { background:#f7fcf9; }
+.matchingPlanRow.skip { background:#fffdf5; }
+.matchingWorkflowFooter #matchingWorkflowDetails { color:#667085; font-size:12px; }
+.matchingWorkflowFooter button:disabled { opacity:.52; cursor:not-allowed; }
 .backupsLayout { display:grid; grid-template-columns:280px minmax(0,1fr); gap:14px; }
 .backupList { display:grid; align-content:start; gap:7px; }
 .backupItem { display:grid; gap:3px; width:100%; padding:9px 10px; text-align:left; background:#fff; border-radius:9px; }
@@ -260,7 +319,7 @@ body.editor-mode .card { cursor:default; }
 .appToast.show { opacity:1; transform:translate(-50%,0); }
 .appToast.warning { background:#9b1c1c; }
 .confirmModal[hidden] { display:none; }
-.confirmModal { position:fixed; inset:0; z-index:360; display:grid; place-items:center; padding:20px; }
+.confirmModal { position:fixed; inset:0; z-index:410; display:grid; place-items:center; padding:20px; }
 .confirmBackdrop { position:absolute; inset:0; background:rgba(15,23,42,.28); backdrop-filter:blur(10px); }
 .confirmPanel { position:relative; width:min(420px,100%); padding:22px; border:1px solid rgba(215,221,229,.9); border-radius:16px; background:#fff; box-shadow:0 26px 80px rgba(15,23,42,.24); }
 .confirmClose { position:absolute; right:10px; top:10px; width:32px; height:32px; min-height:32px; padding:0; border:0; border-radius:9px; background:#eef2f6; color:#475467; font-size:22px; line-height:1; }
@@ -379,6 +438,11 @@ body.editor-mode .card { cursor:default; }
   .verificationNumeric { grid-template-columns:1fr; }
   .verificationOverview { grid-template-columns:repeat(2,minmax(0,1fr)); }
   .matchingSummary { grid-template-columns:repeat(2,minmax(0,1fr)); }
+  .matchingWorkflowPanel { height:calc(100vh - 16px); }
+  .matchingWorkflowBody { grid-template-columns:1fr; grid-template-rows:auto minmax(360px,1fr); overflow:auto; }
+  .matchingCalibrationPane { overflow:visible; border-right:0; border-bottom:1px solid #e4e8ee; }
+  .matchingPreviewPane { min-height:560px; overflow:visible; }
+  .matchingControlPointGrid { grid-template-columns:1fr 1fr; }
   .dataModal { padding:8px; }
   .dataModalPanel { max-height:calc(100vh - 16px); border-radius:12px; }
   .backupsLayout { grid-template-columns:1fr; }
