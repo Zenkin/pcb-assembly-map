@@ -21,6 +21,13 @@ coordinates and selects the corresponding pixel positions directly on the
 project image. Extra control points can be added or removed, while at least
 three rows are always retained.
 
+When a proposed anchor has exactly one placed project component with the same
+case-insensitive reference designator and side, its pixel position is
+pre-filled from the centre of the current component rectangle and marked
+`Из карты`. Duplicate references, unplaced components, invalid geometry, and
+side mismatches are never guessed. Editing or selecting a pixel coordinate
+removes the pre-filled marker.
+
 The accepted affine-calibration contract remains unchanged:
 
 - at least three complete, non-collinear pairs;
