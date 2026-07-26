@@ -33,6 +33,36 @@ test("creates manual rows when the session has too few usable points", () => {
   assert.match(rows[2].id, /^manual:TOP:/);
 });
 
+test("prefills anchor pixels from unique placed project components", () => {
+  const rows = workflow.createCalibrationRows([
+    expected("R1", 0, 0),
+    expected("R2", 100, 0),
+    expected("R3", 0, 40)
+  ], "TOP", [
+    {ref:"r1", side:"TOP", x:10, y:20, w:6, h:8},
+    {ref:"R2", side:"TOP", x:30, y:40, w:10, h:12},
+    {ref:"R3", side:"BOTTOM", x:50, y:60, w:4, h:4}
+  ]);
+
+  assert.deepEqual(rows[0].pixel, {x:13, y:24});
+  assert.equal(rows[0].pixelSource, "project");
+  assert.deepEqual(rows[1].pixel, {x:35, y:46});
+  assert.deepEqual(rows[2].pixel, {x:null, y:null});
+  assert.equal(rows[2].pixelSource, null);
+});
+
+test("does not guess pixels for duplicate, unplaced, or invalid components", () => {
+  const centers = workflow.projectPixelCenters([
+    {ref:"R1", side:"TOP", x:0, y:0, w:10, h:10},
+    {ref:"r1", side:"TOP", x:20, y:20, w:10, h:10},
+    {ref:"R2", side:"TOP", x:0, y:0, w:10, h:10, unplaced:true},
+    {ref:"R3", side:"TOP", x:0, y:0, w:0, h:10},
+    {ref:"R4", side:"BOTTOM", x:0, y:0, w:10, h:10}
+  ], "TOP");
+
+  assert.equal(centers.size, 0);
+});
+
 test("fits a side calibration from completed workflow rows", () => {
   const result = workflow.fitSideCalibration({
     side:"BOTTOM",

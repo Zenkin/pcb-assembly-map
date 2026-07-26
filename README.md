@@ -23,7 +23,8 @@ The editor lets an operator:
 - open a millimetre-based matching-session JSON file and inspect automatic
   matching totals and per-component results;
 - calibrate TOP and BOTTOM coordinates against board images, preview safe
-  automatic placement changes, and apply them only after confirmation;
+  automatic placement changes, reuse unique placed components as control-point
+  suggestions, and apply changes only after confirmation;
 - keep the ten latest verification backups and restore either the complete
   snapshot or selected reference designators;
 - keep the project data and source images together in a local folder.
