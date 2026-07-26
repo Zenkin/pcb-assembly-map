@@ -176,6 +176,7 @@ body.solder-mode .hotspot .resizeHandle { display:none !important; }
 .matchingControlPoint { display:grid; gap:7px; padding:10px; border:1px solid #d7dde5; border-radius:10px; background:#fff; }
 .matchingControlPointHead { display:flex; align-items:center; justify-content:space-between; gap:8px; }
 .matchingControlPointHead strong { min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-size:13px; }
+.matchingPointSource { margin-left:auto; padding:2px 7px; border-radius:999px; background:#e8f3ec; color:#287347; font-size:11px; font-weight:700; white-space:nowrap; }
 .matchingControlPointHead button { width:28px; height:28px; min-height:28px; padding:0; border:0; background:#f1f5f9; color:#667085; }
 .matchingControlPointGrid { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:6px; }
 .matchingControlPointGrid label { display:grid; gap:3px; color:#667085; font-size:10px; }
