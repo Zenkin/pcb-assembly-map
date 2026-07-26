@@ -20,8 +20,8 @@ The editor lets an operator:
   filterable Excel `.xlsx`;
 - import or update a CSV/TSV BOM with a preview of affected components,
   conflict confirmation, and selective reset of stale verification data;
-- open a millimetre-based matching-session JSON file and inspect automatic
-  matching totals and per-component results;
+- import Pick and Place plus JSON/CSV recognition results directly, inspect
+  automatic matches, and explicitly resolve uncertain or ambiguous candidates;
 - calibrate TOP and BOTTOM coordinates against board images, preview safe
   automatic placement changes, reuse unique placed components as control-point
   suggestions, and apply changes only after confirmation;
@@ -63,6 +63,21 @@ New components are marked as unplaced: select one in the list, enable
 `Добавить элементы`, and draw its area on the board. Duplicate designators
 must be corrected in the source BOM before the update can be applied.
 
+## Automatic placement
+
+1. Import the BOM so that the project contains the required reference
+   designators.
+2. In **Автосопоставление**, choose the Pick and Place table.
+3. Choose the recognition result in JSON, CSV, TSV, or semicolon-delimited
+   form. Coordinates and dimensions must describe the board in millimetres.
+4. Start matching. Exact results are accepted automatically; select a detected
+   place explicitly for uncertain or ambiguous rows.
+5. Open calibration, verify or click at least three non-collinear control
+   points for each side, calculate the transform, preview, and apply.
+
+The advanced JSON-session button remains available for integrations that
+already generate the complete versioned exchange document.
+
 ## Build
 
 ```bash
@@ -96,6 +111,7 @@ js/report.js     Verification report rows and CSV/XLSX serialization
 js/bom.js        BOM parsing, update planning, backups and restoration
 js/matching-*.js Automatic footprint matching, exchange format and result view
 js/pick-and-place.js Placement-table adapter for expected matching footprints
+js/recognition-import.js Recognition-result adapter for detected footprints
 preload.js       Safe renderer-to-main IPC bridge
 main.js          Electron lifecycle, filesystem and project IPC
 assets/          Application icons
@@ -110,6 +126,7 @@ assets/          Application icons
 - [Matching application plan](docs/specifications/matching-application-plan.md) — safe preview and stale-state validation before pixel geometry is changed.
 - [Matching calibration workflow](docs/specifications/matching-calibration-workflow.md) — operator control-point entry, visual preview, and confirmed application.
 - [Pick and Place import](docs/specifications/pick-and-place-import.md) — supported placement-table columns, coordinate units, normalization, and validation.
+- [Recognition import and operator resolution](docs/specifications/recognition-import.md) — supported detector output and explicit handling of uncertain candidates.
 
 ## Development workflow
 

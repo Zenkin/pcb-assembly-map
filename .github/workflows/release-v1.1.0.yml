@@ -1,0 +1,152 @@
+name: Release v1.1.0
+
+on:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - .github/workflows/release-v1.1.0.yml
+      - assets/**
+      - css/**
+      - js/**
+      - projects/default-project/**
+      - test/**
+      - index.html
+      - main.js
+      - preload.js
+      - package.json
+      - package-lock.json
+  push:
+    branches:
+      - main
+    paths:
+      - .github/workflows/release-v1.1.0.yml
+
+permissions:
+  contents: write
+
+env:
+  RELEASE_TAG: v1.1.0
+  RELEASE_VERSION: 1.1.0
+
+jobs:
+  windows:
+    name: Build Windows packages
+    runs-on: windows-latest
+    steps:
+      - name: Check out accepted source
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Validate source
+        run: npm run check
+
+      - name: Build installer and portable executable
+        run: npm run build -- --publish never
+
+      - name: Stage Windows assets
+        shell: pwsh
+        run: |
+          $installer = Get-ChildItem dist -File -Filter "*Setup*.exe"
+          $portable = Get-ChildItem dist -File -Filter "*.exe" |
+            Where-Object { $_.Name -notlike "*Setup*" }
+          if ($installer.Count -ne 1 -or $portable.Count -ne 1) {
+            throw "Expected one installer and one portable executable."
+          }
+          New-Item -ItemType Directory -Path release-assets
+          Copy-Item $installer.FullName "release-assets/SolderMap-Setup-${env:RELEASE_VERSION}-x64.exe"
+          Copy-Item $portable.FullName "release-assets/SolderMap-Portable-${env:RELEASE_VERSION}-x64.exe"
+
+      - name: Upload Windows assets
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-assets
+          path: release-assets/*
+          if-no-files-found: error
+
+  linux:
+    name: Build Linux archive
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out accepted source
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Validate source
+        run: npm run check
+
+      - name: Build Linux archive
+        run: npm run build:linux -- --publish never
+
+      - name: Stage Linux asset
+        run: |
+          mapfile -t archives < <(find dist -maxdepth 1 -type f -name '*.tar.gz')
+          test "${#archives[@]}" -eq 1
+          mkdir release-assets
+          cp "${archives[0]}" "release-assets/SolderMap-${RELEASE_VERSION}-linux-x64.tar.gz"
+
+      - name: Upload Linux asset
+        uses: actions/upload-artifact@v4
+        with:
+          name: linux-assets
+          path: release-assets/*
+          if-no-files-found: error
+
+  release:
+    name: Publish GitHub Release
+    if: github.event_name == 'push'
+    needs:
+      - windows
+      - linux
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download release assets
+        uses: actions/download-artifact@v4
+        with:
+          pattern: "*-assets"
+          path: release-assets
+          merge-multiple: true
+
+      - name: Create checksums
+        working-directory: release-assets
+        run: sha256sum * > SHA256SUMS.txt
+
+      - name: Create tag and release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh api "repos/${GITHUB_REPOSITORY}/git/refs" \
+            --method POST \
+            --field ref="refs/tags/${RELEASE_TAG}" \
+            --field sha="${GITHUB_SHA}"
+          gh release create "${RELEASE_TAG}" release-assets/* \
+            --repo "${GITHUB_REPOSITORY}" \
+            --verify-tag \
+            --title "SolderMap ${RELEASE_VERSION}" \
+            --notes "Рабочий выпуск с прямым импортом Pick and Place и результатов распознавания.
+
+          - Windows installer (x64)
+          - Windows portable executable (x64)
+          - Linux archive (x64)
+
+          Windows-файлы не подписаны сертификатом, поэтому SmartScreen может показать предупреждение."

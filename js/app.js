@@ -35,6 +35,15 @@ const {
   runDocument: runMatchingDocument
 } = window.SolderMapMatchingFormat;
 const {
+  parsePickAndPlace
+} = window.SolderMapPickAndPlace;
+const {
+  parseRecognition
+} = window.SolderMapRecognitionImport;
+const {
+  resolveResult: resolveMatchingResult
+} = window.SolderMapMatchingResolution;
+const {
   buildViewModel: buildMatchingViewModel
 } = window.SolderMapMatchingView;
 const {
@@ -74,6 +83,7 @@ let pendingBomPlan = null;
 let pendingBomSource = null;
 let selectedBackupId = "";
 let pendingMatchingRun = null;
+let pendingMatchingSources = {placement:null, recognition:null};
 let matchingWorkflowState = null;
 
 const projectGate = document.getElementById("projectGate");
@@ -105,6 +115,13 @@ const openBackupsBtn = document.getElementById("openBackupsBtn");
 const backupCount = document.getElementById("backupCount");
 const bomFileInput = document.getElementById("bomFileInput");
 const matchingStatus = document.getElementById("matchingStatus");
+const importPlacementBtn = document.getElementById("importPlacementBtn");
+const importRecognitionBtn = document.getElementById("importRecognitionBtn");
+const runMatchingBtn = document.getElementById("runMatchingBtn");
+const placementSourceStatus = document.getElementById("placementSourceStatus");
+const recognitionSourceStatus = document.getElementById("recognitionSourceStatus");
+const placementFileInput = document.getElementById("placementFileInput");
+const recognitionFileInput = document.getElementById("recognitionFileInput");
 const importMatchingBtn = document.getElementById("importMatchingBtn");
 const matchingFileInput = document.getElementById("matchingFileInput");
 const matchingModal = document.getElementById("matchingModal");
@@ -787,9 +804,13 @@ function revokeImageUrls() {
 }
 async function openWorkspace() {
   pendingMatchingRun = null;
+  pendingMatchingSources = {placement:null, recognition:null};
   matchingWorkflowState = null;
   matchingStatus.className = "";
-  matchingStatus.textContent = "Сеанс не открыт";
+  matchingStatus.textContent = "Исходные данные не выбраны";
+  placementSourceStatus.textContent = "Выбрать CSV/TSV";
+  recognitionSourceStatus.textContent = "Выбрать JSON/CSV";
+  runMatchingBtn.disabled = true;
   matchingCalibrateBtn.disabled = true;
   matchingModal.hidden = true;
   matchingWorkflowModal.hidden = true;
@@ -815,6 +836,7 @@ async function closeWorkspaceToProjects() {
   undoStack = [];
   redoStack = [];
   pendingMatchingRun = null;
+  pendingMatchingSources = {placement:null, recognition:null};
   matchingWorkflowState = null;
   matchingModal.hidden = true;
   matchingWorkflowModal.hidden = true;
@@ -1070,22 +1092,37 @@ async function selectBom() {
 function closeMatchingResults() {
   matchingModal.hidden = true;
 }
-function showMatchingResults(source) {
-  const run = runMatchingDocument(source.text);
-  pendingMatchingRun = {
-    sourceName:String(source.name || "matching-session.json"),
-    document:run.document,
-    session:run.session
-  };
+function matchingResolutionControl(row, index) {
+  if (row.status === "matched_exact" || row.status === "matched_acceptable") {
+    return `<span>Автоматически</span>`;
+  }
+  if (!row.resolutionCandidates.length) return `<span>Нет применимых кандидатов</span>`;
+  return `<select class="matchingResolution ${row.operatorConfirmed ? "confirmed" : ""}"
+    data-matching-resolution="${index}" aria-label="Решение для ${escapeHtml(row.ref)}">
+    <option value="">Пропустить</option>
+    ${row.resolutionCandidates.map(candidate => `
+      <option value="${escapeHtml(candidate.id)}"
+        ${row.operatorConfirmed && row.selectedFoundId === candidate.id ? "selected" : ""}>
+        ${escapeHtml(candidate.id)} · ${matchingNumber(candidate.distance)} мм
+      </option>
+    `).join("")}
+  </select>`;
+}
+function renderMatchingResults() {
+  if (!pendingMatchingRun) return;
   const view = buildMatchingViewModel(
-    source.name,
-    run
+    pendingMatchingRun.sourceName,
+    {
+      document:pendingMatchingRun.document,
+      session:pendingMatchingRun.session
+    }
   );
   matchingStatus.className = "";
-  matchingStatus.textContent = `${view.sourceName} · ${view.summary.matched}/${view.summary.total}`;
+  matchingStatus.textContent = `${view.sourceName} · применимо ${view.summary.applicable}/${view.summary.total}`;
   matchingSummary.innerHTML = [
     ["Всего", view.summary.total, ""],
     ["Сопоставлено", view.summary.matched, "matched"],
+    ["Подтверждено", view.summary.confirmed, "matched"],
     ["Неоднозначно", view.summary.ambiguous, "ambiguous"],
     ["Не найдено", view.summary.unmatched, "unmatched"]
   ].map(([label, value, tone]) => `
@@ -1094,13 +1131,13 @@ function showMatchingResults(source) {
       <span>${label}</span>
     </div>
   `).join("");
-  matchingResults.innerHTML = view.rows.map(row => `
+  matchingResults.innerHTML = view.rows.map((row, index) => `
     <tr>
       <td><strong>${escapeHtml(row.ref || row.expectedId)}</strong></td>
       <td>${escapeHtml(row.side)}</td>
       <td><span class="matchingStatusBadge ${escapeHtml(row.tone)}">${escapeHtml(row.statusLabel)}</span></td>
       <td>${escapeHtml(row.selectedFoundId || "—")}</td>
-      <td>${row.candidatesInRadius}</td>
+      <td>${matchingResolutionControl(row, index)}</td>
     </tr>
   `).join("") || `<tr><td colspan="5">В сеансе нет ожидаемых посадочных мест.</td></tr>`;
   matchingDetails.textContent = [
@@ -1109,7 +1146,16 @@ function showMatchingResults(source) {
     `k = ${view.options.radiusScale}`,
     `радиус без геометрии: ${view.options.defaultRadiusMm} мм`
   ].join(" · ");
-  matchingCalibrateBtn.disabled = view.summary.matched === 0;
+  matchingCalibrateBtn.disabled = view.summary.applicable === 0;
+}
+function showMatchingResults(source) {
+  const run = runMatchingDocument(source.document ?? source.text);
+  pendingMatchingRun = {
+    sourceName:String(source.name || "matching-session.json"),
+    document:run.document,
+    session:run.session
+  };
+  renderMatchingResults();
   matchingModal.hidden = false;
   matchingDoneBtn.focus();
 }
@@ -1147,6 +1193,81 @@ async function selectMatchingSession() {
   } finally {
     importMatchingBtn.disabled = false;
   }
+}
+function updateMatchingSourceStatus() {
+  const placement = pendingMatchingSources.placement;
+  const recognition = pendingMatchingSources.recognition;
+  placementSourceStatus.textContent = placement
+    ? `${placement.name} · ${placement.expectedFootprints.length}`
+    : "Выбрать CSV/TSV";
+  recognitionSourceStatus.textContent = recognition
+    ? `${recognition.name} · ${recognition.foundFootprints.length}`
+    : "Выбрать JSON/CSV";
+  runMatchingBtn.disabled = !(placement && recognition);
+  if (placement && recognition) {
+    matchingStatus.className = "";
+    matchingStatus.textContent = "Данные готовы к сопоставлению";
+  } else if (placement || recognition) {
+    matchingStatus.className = "";
+    matchingStatus.textContent = "Выберите второй файл";
+  }
+}
+function useMatchingSource(kind, source) {
+  if (!source) return;
+  if (kind === "placement") {
+    const parsed = parsePickAndPlace(source.text);
+    pendingMatchingSources.placement = {
+      name:String(source.name || "pick-and-place.csv"),
+      expectedFootprints:parsed.expectedFootprints
+    };
+  } else if (kind === "recognition") {
+    const parsed = parseRecognition(source.text);
+    pendingMatchingSources.recognition = {
+      name:String(source.name || "recognition.json"),
+      foundFootprints:parsed.foundFootprints
+    };
+  } else throw new Error("Неизвестный тип исходного файла.");
+  pendingMatchingRun = null;
+  updateMatchingSourceStatus();
+}
+async function readMatchingSourceFromBrowserFile(file) {
+  if (!file) return null;
+  if (file.size > 10 * 1024 * 1024) throw new Error("Исходный файл больше 10 МБ.");
+  return {name:file.name, text:await file.text()};
+}
+async function selectMatchingSource(kind) {
+  const button = kind === "placement" ? importPlacementBtn : importRecognitionBtn;
+  const fallbackInput = kind === "placement" ? placementFileInput : recognitionFileInput;
+  button.disabled = true;
+  try {
+    if (window.projectApi?.selectMatchingSourceFile) {
+      useMatchingSource(kind, await window.projectApi.selectMatchingSourceFile(kind));
+      return;
+    }
+    fallbackInput.click();
+  } catch (error) {
+    console.error(error);
+    matchingStatus.className = "error";
+    matchingStatus.textContent = "Ошибка исходного файла";
+    notify(error?.message || "Не удалось прочитать исходный файл.", "warning");
+  } finally {
+    button.disabled = false;
+  }
+}
+function runImportedMatching() {
+  const placement = pendingMatchingSources.placement;
+  const recognition = pendingMatchingSources.recognition;
+  if (!placement || !recognition) return;
+  showMatchingResults({
+    name:`${placement.name} + ${recognition.name}`,
+    document:{
+      format:"soldermap-matching-session",
+      version:1,
+      units:"mm",
+      expectedFootprints:placement.expectedFootprints,
+      foundFootprints:recognition.foundFootprints
+    }
+  });
 }
 function matchingSides() {
   if (!pendingMatchingRun) return [];
@@ -2246,6 +2367,35 @@ bomFileInput.addEventListener("change", async () => {
     notify(error?.message || "Не удалось прочитать BOM.", "warning");
   }
 });
+importPlacementBtn.addEventListener("click", () => selectMatchingSource("placement"));
+importRecognitionBtn.addEventListener("click", () => selectMatchingSource("recognition"));
+runMatchingBtn.addEventListener("click", runImportedMatching);
+placementFileInput.addEventListener("change", async () => {
+  try {
+    useMatchingSource(
+      "placement",
+      await readMatchingSourceFromBrowserFile(placementFileInput.files[0])
+    );
+  } catch (error) {
+    console.error(error);
+    notify(error?.message || "Не удалось прочитать Pick and Place.", "warning");
+  } finally {
+    placementFileInput.value = "";
+  }
+});
+recognitionFileInput.addEventListener("change", async () => {
+  try {
+    useMatchingSource(
+      "recognition",
+      await readMatchingSourceFromBrowserFile(recognitionFileInput.files[0])
+    );
+  } catch (error) {
+    console.error(error);
+    notify(error?.message || "Не удалось прочитать результаты распознавания.", "warning");
+  } finally {
+    recognitionFileInput.value = "";
+  }
+});
 importMatchingBtn.addEventListener("click", selectMatchingSession);
 matchingFileInput.addEventListener("change", async () => {
   try {
@@ -2258,6 +2408,21 @@ matchingFileInput.addEventListener("change", async () => {
     notify(error?.message || "Не удалось открыть сеанс сопоставления.", "warning");
   } finally {
     matchingFileInput.value = "";
+  }
+});
+matchingResults.addEventListener("change", event => {
+  const select = event.target.closest("[data-matching-resolution]");
+  if (!select || !pendingMatchingRun) return;
+  try {
+    pendingMatchingRun.session = resolveMatchingResult(
+      pendingMatchingRun.session,
+      Number(select.dataset.matchingResolution),
+      select.value
+    );
+    renderMatchingResults();
+  } catch (error) {
+    console.error(error);
+    notify(error?.message || "Не удалось применить решение оператора.", "warning");
   }
 });
 matchingCloseBtn.addEventListener("click", closeMatchingResults);

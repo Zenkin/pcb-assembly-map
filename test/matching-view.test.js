@@ -26,7 +26,14 @@ test("builds a compact Russian presentation model from a matching run", () => {
   );
 
   assert.equal(view.sourceName, "board-session.json");
-  assert.deepEqual(view.summary, {total:2, matched:1, ambiguous:0, unmatched:1});
+  assert.deepEqual(view.summary, {
+    total:2,
+    matched:1,
+    ambiguous:0,
+    unmatched:1,
+    applicable:0,
+    confirmed:0
+  });
   assert.equal(view.foundCount, 2);
   assert.equal(view.options.radiusScale, 1.5);
   assert.equal(view.options.defaultRadiusMm, 5);
@@ -34,22 +41,25 @@ test("builds a compact Russian presentation model from a matching run", () => {
     ref:row.ref,
     side:row.side,
     status:row.status,
-    selectedFoundId:row.selectedFoundId,
-    candidatesInRadius:row.candidatesInRadius
+      selectedFoundId:row.selectedFoundId,
+      candidatesInRadius:row.candidatesInRadius,
+      applicable:row.applicable
   })), [
     {
       ref:"R1",
       side:"TOP",
       status:"matched_uncertain_geometry",
       selectedFoundId:"found-1",
-      candidatesInRadius:1
+      candidatesInRadius:1,
+      applicable:false
     },
     {
       ref:"C1",
       side:"BOTTOM",
       status:"unmatched",
       selectedFoundId:"",
-      candidatesInRadius:0
+      candidatesInRadius:0,
+      applicable:false
     }
   ]);
 });

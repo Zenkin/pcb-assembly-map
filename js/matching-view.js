@@ -1,8 +1,14 @@
 (function initMatchingView(root, factory) {
-  const api = factory();
+  const resolutionApi = typeof module === "object" && module.exports
+    ? require("./matching-resolution.js")
+    : root?.SolderMapMatchingResolution;
+  const api = factory(resolutionApi);
   if (typeof module === "object" && module.exports) module.exports = api;
   if (root) root.SolderMapMatchingView = api;
-})(typeof globalThis !== "undefined" ? globalThis : this, function createMatchingViewApi() {
+})(typeof globalThis !== "undefined" ? globalThis : this, function createMatchingViewApi(
+  resolutionApi
+) {
+  if (!resolutionApi) throw new Error("SolderMapMatchingResolution is required");
   const STATUS_META = Object.freeze({
     matched_exact:{label:"Точное совпадение", tone:"matched"},
     matched_acceptable:{label:"Допустимое совпадение", tone:"matched"},
@@ -42,7 +48,10 @@
         statusLabel:meta.label,
         tone:meta.tone,
         selectedFoundId:row.selectedFoundId ? String(row.selectedFoundId) : "",
-        candidatesInRadius:candidates.filter(candidate => candidate?.withinRadius === true).length
+        candidatesInRadius:candidates.filter(candidate => candidate?.withinRadius === true).length,
+        operatorConfirmed:row.operatorConfirmed === true,
+        applicable:resolutionApi.applicableResult(row),
+        resolutionCandidates:resolutionApi.selectableCandidates(row)
       };
     });
 
@@ -59,7 +68,9 @@
         total:Number(summary.total) || 0,
         matched:Number(summary.matched) || 0,
         ambiguous:Number(summary.ambiguous) || 0,
-        unmatched:Number(summary.unmatched) || 0
+        unmatched:Number(summary.unmatched) || 0,
+        applicable:resolutionApi.countApplicable(session.results),
+        confirmed:session.results.filter(item => item?.operatorConfirmed === true).length
       },
       foundCount:Array.isArray(document.foundFootprints) ? document.foundFootprints.length : 0,
       rows
