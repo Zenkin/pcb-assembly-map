@@ -93,13 +93,40 @@
     return [first, second, third];
   }
 
-  function createCalibrationRows(expectedFootprints, side) {
+  function projectPixelCenters(components, side) {
+    if (!Array.isArray(components)) throw new TypeError("components must be an array");
+    const normalizedSide = normalizeSide(side);
+    const byRef = new Map();
+    components.forEach(component => {
+      if (String(component?.side || "").trim().toUpperCase() !== normalizedSide) return;
+      const ref = String(component?.ref || "").trim().toUpperCase();
+      if (!ref) return;
+      if (!byRef.has(ref)) byRef.set(ref, []);
+      byRef.get(ref).push(component);
+    });
+    return new Map([...byRef].flatMap(([ref, matches]) => {
+      if (matches.length !== 1 || matches[0]?.unplaced === true) return [];
+      const component = matches[0];
+      const x = Number(component.x);
+      const y = Number(component.y);
+      const w = Number(component.w);
+      const h = Number(component.h);
+      if (![x, y, w, h].every(Number.isFinite) || w <= 0 || h <= 0) return [];
+      return [[ref, {x:x + w / 2, y:y + h / 2}]];
+    }));
+  }
+
+  function createCalibrationRows(expectedFootprints, side, components = []) {
     const anchors = selectCalibrationAnchors(expectedFootprints, side);
+    const pixelCenters = projectPixelCenters(components, side);
     const rows = anchors.map(anchor => ({
       id:anchor.id,
       label:anchor.ref,
       mm:{...anchor.mm},
-      pixel:{x:null, y:null}
+      pixel:pixelCenters.has(anchor.ref.trim().toUpperCase())
+        ? {...pixelCenters.get(anchor.ref.trim().toUpperCase())}
+        : {x:null, y:null},
+      pixelSource:pixelCenters.has(anchor.ref.trim().toUpperCase()) ? "project" : null
     }));
     while (rows.length < 3) {
       rows.push({
@@ -185,6 +212,7 @@
   return Object.freeze({
     SKIP_REASON_LABELS,
     selectCalibrationAnchors,
+    projectPixelCenters,
     createCalibrationRows,
     normalizeCalibrationRows,
     fitSideCalibration,
