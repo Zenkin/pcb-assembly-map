@@ -1174,7 +1174,11 @@ function openMatchingWorkflow() {
     side:sides.includes(currentSide) ? currentSide : sides[0],
     rows:Object.fromEntries(SIDES.map(side => [
       side,
-      createCalibrationRows(pendingMatchingRun.document.expectedFootprints, side)
+      createCalibrationRows(
+        pendingMatchingRun.document.expectedFootprints,
+        side,
+        project.components
+      )
     ])),
     calibrations:{},
     plan:null,
@@ -1220,6 +1224,7 @@ function renderMatchingControlPoints() {
     return `<section class="matchingControlPoint">
       <div class="matchingControlPointHead">
         <strong>${escapeHtml(row.label || `Точка ${index + 1}`)}</strong>
+        ${row.pixelSource === "project" ? `<span class="matchingPointSource">Из карты</span>` : ""}
         <button type="button" data-remove-matching-point="${index}" aria-label="Удалить точку"
           ${rows.length <= 3 ? "disabled" : ""}>×</button>
       </div>
@@ -1389,6 +1394,7 @@ function pickMatchingPreviewPoint(event) {
     x:Math.max(0, Math.min(size.w, Math.round((event.clientX - rect.left) * size.w / rect.width * 10) / 10)),
     y:Math.max(0, Math.min(size.h, Math.round((event.clientY - rect.top) * size.h / rect.height * 10) / 10))
   };
+  row.pixelSource = null;
   matchingWorkflowState.pickingIndex = null;
   invalidateMatchingSide(side);
   renderMatchingWorkflow();
@@ -2301,6 +2307,7 @@ matchingControlPoints.addEventListener("change", event => {
   const group = event.target.dataset.matchingGroup;
   const axis = event.target.dataset.matchingAxis;
   row[group][axis] = event.target.value;
+  if (group === "pixel") row.pixelSource = null;
   invalidateMatchingSide(side);
   renderMatchingCalibrationStatus();
   renderMatchingPlanSummary();
