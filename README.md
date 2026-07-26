@@ -21,7 +21,9 @@ The editor lets an operator:
 - import or update a CSV/TSV BOM with a preview of affected components,
   conflict confirmation, and selective reset of stale verification data;
 - open a millimetre-based matching-session JSON file and inspect automatic
-  matching totals and per-component results without changing the project;
+  matching totals and per-component results;
+- calibrate TOP and BOTTOM coordinates against board images, preview safe
+  automatic placement changes, and apply them only after confirmation;
 - keep the ten latest verification backups and restore either the complete
   snapshot or selected reference designators;
 - keep the project data and source images together in a local folder.
@@ -104,6 +106,7 @@ assets/          Application icons
 - [Matching session JSON format](docs/specifications/matching-session-json.md) — versioned millimetre-based exchange format for expected and detected footprints.
 - [Matching coordinate calibration](docs/specifications/matching-coordinate-calibration.md) — explicit affine conversion from millimetres to source-image pixels.
 - [Matching application plan](docs/specifications/matching-application-plan.md) — safe preview and stale-state validation before pixel geometry is changed.
+- [Matching calibration workflow](docs/specifications/matching-calibration-workflow.md) — operator control-point entry, visual preview, and confirmed application.
 
 ## Development workflow
 

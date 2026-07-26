@@ -37,6 +37,14 @@ const {
 const {
   buildViewModel: buildMatchingViewModel
 } = window.SolderMapMatchingView;
+const {
+  createCalibrationRows,
+  fitSideCalibration,
+  createApplicationPlan: createMatchingApplicationPlan,
+  applyApplicationPlan: applyMatchingApplicationPlan,
+  planForSide: matchingPlanForSide,
+  skipReasonLabel: matchingSkipReasonLabel
+} = window.SolderMapMatchingWorkflow;
 let projectHandle = null;
 let project = null;
 let currentSide = "TOP";
@@ -65,6 +73,8 @@ let contextComponentKey = "";
 let pendingBomPlan = null;
 let pendingBomSource = null;
 let selectedBackupId = "";
+let pendingMatchingRun = null;
+let matchingWorkflowState = null;
 
 const projectGate = document.getElementById("projectGate");
 const startOpenProjectBtn = document.getElementById("startOpenProjectBtn");
@@ -103,7 +113,30 @@ const matchingCloseBtn = document.getElementById("matchingCloseBtn");
 const matchingSummary = document.getElementById("matchingSummary");
 const matchingResults = document.getElementById("matchingResults");
 const matchingDetails = document.getElementById("matchingDetails");
+const matchingCalibrateBtn = document.getElementById("matchingCalibrateBtn");
 const matchingDoneBtn = document.getElementById("matchingDoneBtn");
+const matchingWorkflowModal = document.getElementById("matchingWorkflowModal");
+const matchingWorkflowBackdrop = document.getElementById("matchingWorkflowBackdrop");
+const matchingWorkflowCloseBtn = document.getElementById("matchingWorkflowCloseBtn");
+const matchingWorkflowCancelBtn = document.getElementById("matchingWorkflowCancelBtn");
+const matchingWorkflowTopBtn = document.getElementById("matchingWorkflowTopBtn");
+const matchingWorkflowBottomBtn = document.getElementById("matchingWorkflowBottomBtn");
+const matchingResidualLimit = document.getElementById("matchingResidualLimit");
+const matchingControlPoints = document.getElementById("matchingControlPoints");
+const matchingAddPointBtn = document.getElementById("matchingAddPointBtn");
+const matchingFitBtn = document.getElementById("matchingFitBtn");
+const matchingCalibrationStatus = document.getElementById("matchingCalibrationStatus");
+const matchingPlanSummary = document.getElementById("matchingPlanSummary");
+const matchingPreviewSide = document.getElementById("matchingPreviewSide");
+const matchingPickHint = document.getElementById("matchingPickHint");
+const matchingPreviewViewport = document.getElementById("matchingPreviewViewport");
+const matchingPreviewStage = document.getElementById("matchingPreviewStage");
+const matchingPreviewImage = document.getElementById("matchingPreviewImage");
+const matchingPreviewOverlay = document.getElementById("matchingPreviewOverlay");
+const matchingPreviewEmpty = document.getElementById("matchingPreviewEmpty");
+const matchingPlanList = document.getElementById("matchingPlanList");
+const matchingWorkflowDetails = document.getElementById("matchingWorkflowDetails");
+const matchingApplyBtn = document.getElementById("matchingApplyBtn");
 const bomModal = document.getElementById("bomModal");
 const bomBackdrop = document.getElementById("bomBackdrop");
 const bomCloseBtn = document.getElementById("bomCloseBtn");
@@ -753,6 +786,13 @@ function revokeImageUrls() {
   });
 }
 async function openWorkspace() {
+  pendingMatchingRun = null;
+  matchingWorkflowState = null;
+  matchingStatus.className = "";
+  matchingStatus.textContent = "Сеанс не открыт";
+  matchingCalibrateBtn.disabled = true;
+  matchingModal.hidden = true;
+  matchingWorkflowModal.hidden = true;
   document.body.classList.add("project-open");
   search.value = "";
   stageFilter.value = "";
@@ -774,6 +814,10 @@ async function closeWorkspaceToProjects() {
   projectHandle = null;
   undoStack = [];
   redoStack = [];
+  pendingMatchingRun = null;
+  matchingWorkflowState = null;
+  matchingModal.hidden = true;
+  matchingWorkflowModal.hidden = true;
   revokeImageUrls();
   await loadProjectCards();
 }
@@ -1027,9 +1071,15 @@ function closeMatchingResults() {
   matchingModal.hidden = true;
 }
 function showMatchingResults(source) {
+  const run = runMatchingDocument(source.text);
+  pendingMatchingRun = {
+    sourceName:String(source.name || "matching-session.json"),
+    document:run.document,
+    session:run.session
+  };
   const view = buildMatchingViewModel(
     source.name,
-    runMatchingDocument(source.text)
+    run
   );
   matchingStatus.className = "";
   matchingStatus.textContent = `${view.sourceName} · ${view.summary.matched}/${view.summary.total}`;
@@ -1059,6 +1109,7 @@ function showMatchingResults(source) {
     `k = ${view.options.radiusScale}`,
     `радиус без геометрии: ${view.options.defaultRadiusMm} мм`
   ].join(" · ");
+  matchingCalibrateBtn.disabled = view.summary.matched === 0;
   matchingModal.hidden = false;
   matchingDoneBtn.focus();
 }
@@ -1095,6 +1146,283 @@ async function selectMatchingSession() {
     notify(error?.message || "Не удалось открыть сеанс сопоставления.", "warning");
   } finally {
     importMatchingBtn.disabled = false;
+  }
+}
+function matchingSides() {
+  if (!pendingMatchingRun) return [];
+  return SIDES.filter(side => pendingMatchingRun.document.expectedFootprints
+    .some(item => item.side === side));
+}
+function closeMatchingWorkflow(returnToResults = true) {
+  matchingWorkflowModal.hidden = true;
+  if (returnToResults && pendingMatchingRun) {
+    matchingModal.hidden = false;
+    matchingCalibrateBtn.focus();
+  }
+}
+function openMatchingWorkflow() {
+  if (!project || !pendingMatchingRun) {
+    notify("Сначала откройте сеанс сопоставления.", "warning");
+    return;
+  }
+  const sides = matchingSides();
+  if (!sides.length) {
+    notify("В сеансе нет ожидаемых посадочных мест.", "warning");
+    return;
+  }
+  matchingWorkflowState = {
+    side:sides.includes(currentSide) ? currentSide : sides[0],
+    rows:Object.fromEntries(SIDES.map(side => [
+      side,
+      createCalibrationRows(pendingMatchingRun.document.expectedFootprints, side)
+    ])),
+    calibrations:{},
+    plan:null,
+    pickingIndex:null,
+    calibrationMessages:{TOP:"", BOTTOM:""}
+  };
+  matchingResidualLimit.value = "2";
+  matchingModal.hidden = true;
+  matchingWorkflowModal.hidden = false;
+  renderMatchingWorkflow();
+  matchingFitBtn.focus();
+}
+function matchingNumber(value) {
+  const number = Number(value);
+  return Number.isFinite(number)
+    ? number.toLocaleString("ru-RU", {maximumFractionDigits:3})
+    : "—";
+}
+function matchingFieldValue(value) {
+  return value === null || value === undefined ? "" : String(value);
+}
+function matchingCoordinatePresent(value) {
+  return value !== null
+    && value !== undefined
+    && String(value).trim() !== ""
+    && Number.isFinite(Number(value));
+}
+function matchingRowInput(index, group, axis, value, label) {
+  return `<label>${label}
+    <input type="number" step="any" inputmode="decimal"
+      data-matching-index="${index}" data-matching-group="${group}" data-matching-axis="${axis}"
+      value="${escapeHtml(matchingFieldValue(value))}">
+  </label>`;
+}
+function renderMatchingControlPoints() {
+  if (!matchingWorkflowState) return;
+  const side = matchingWorkflowState.side;
+  const rows = matchingWorkflowState.rows[side];
+  matchingControlPoints.innerHTML = rows.map((row, index) => {
+    const isPicking = matchingWorkflowState.pickingIndex === index;
+    const hasPixel = matchingCoordinatePresent(row.pixel.x)
+      && matchingCoordinatePresent(row.pixel.y);
+    return `<section class="matchingControlPoint">
+      <div class="matchingControlPointHead">
+        <strong>${escapeHtml(row.label || `Точка ${index + 1}`)}</strong>
+        <button type="button" data-remove-matching-point="${index}" aria-label="Удалить точку"
+          ${rows.length <= 3 ? "disabled" : ""}>×</button>
+      </div>
+      <div class="matchingControlPointGrid">
+        ${matchingRowInput(index, "mm", "x", row.mm.x, "X, мм")}
+        ${matchingRowInput(index, "mm", "y", row.mm.y, "Y, мм")}
+        ${matchingRowInput(index, "pixel", "x", row.pixel.x, "X, px")}
+        ${matchingRowInput(index, "pixel", "y", row.pixel.y, "Y, px")}
+      </div>
+      <button class="matchingPointPick ${isPicking ? "active" : ""}" type="button"
+        data-pick-matching-point="${index}">
+        ${isPicking ? "Щёлкните на изображении…" : hasPixel ? "Указать заново" : "Указать на изображении"}
+      </button>
+    </section>`;
+  }).join("");
+}
+function renderMatchingPreview() {
+  if (!matchingWorkflowState) return;
+  const side = matchingWorkflowState.side;
+  const size = project.imageSizes[side] || DEFAULT_IMAGE_SIZES[side];
+  const imageUrl = imageUrls[side];
+  matchingPreviewSide.textContent = side;
+  matchingPreviewEmpty.hidden = Boolean(imageUrl);
+  matchingPreviewStage.hidden = !imageUrl;
+  matchingPreviewStage.style.aspectRatio = `${size.w} / ${size.h}`;
+  if (imageUrl) matchingPreviewImage.src = imageUrl;
+  else matchingPreviewImage.removeAttribute("src");
+
+  const picking = matchingWorkflowState.pickingIndex;
+  matchingPickHint.textContent = Number.isInteger(picking)
+    ? `Укажите точку ${picking + 1} на изображении`
+    : "Выберите опорную точку слева";
+  matchingPickHint.classList.toggle("picking", Number.isInteger(picking));
+
+  const sidePlan = matchingWorkflowState.plan
+    ? matchingPlanForSide(matchingWorkflowState.plan, side)
+    : {updates:[], skipped:[], entries:[], skipReasons:{}};
+  const boxes = sidePlan.updates.flatMap(entry => {
+    const before = entry.before;
+    const after = entry.after;
+    return [
+      `<div class="matchingPreviewBox before" style="left:${before.x / size.w * 100}%;top:${before.y / size.h * 100}%;width:${before.w / size.w * 100}%;height:${before.h / size.h * 100}%"></div>`,
+      `<div class="matchingPreviewBox after" style="left:${after.x / size.w * 100}%;top:${after.y / size.h * 100}%;width:${after.w / size.w * 100}%;height:${after.h / size.h * 100}%"><span>${escapeHtml(entry.ref)}</span></div>`
+    ];
+  });
+  const points = matchingWorkflowState.rows[side].flatMap((row, index) => {
+    if (!matchingCoordinatePresent(row.pixel.x) || !matchingCoordinatePresent(row.pixel.y)) {
+      return [];
+    }
+    const x = Number(row.pixel.x);
+    const y = Number(row.pixel.y);
+    return [`<div class="matchingPreviewPoint" style="left:${x / size.w * 100}%;top:${y / size.h * 100}%"><span>${index + 1}</span></div>`];
+  });
+  matchingPreviewOverlay.innerHTML = boxes.concat(points).join("");
+
+  matchingPlanList.innerHTML = sidePlan.entries.map(entry => entry.action === "update"
+    ? `<div class="matchingPlanRow update"><strong>${escapeHtml(entry.ref)}</strong><span>Будет изменён</span><span>${entry.after.x}, ${entry.after.y}, ${entry.after.w} × ${entry.after.h} px</span></div>`
+    : `<div class="matchingPlanRow skip"><strong>${escapeHtml(entry.ref || entry.expectedId)}</strong><span>Пропущен</span><span>${escapeHtml(matchingSkipReasonLabel(entry.reason))}</span></div>`
+  ).join("") || `<div class="emptyLine" style="padding:12px">Для этой стороны план ещё не рассчитан.</div>`;
+}
+function renderMatchingPlanSummary() {
+  if (!matchingWorkflowState?.plan) {
+    matchingPlanSummary.innerHTML = "";
+    matchingWorkflowDetails.textContent = "Сначала выполните калибровку хотя бы одной стороны.";
+    matchingApplyBtn.disabled = true;
+    return;
+  }
+  const {summary} = matchingWorkflowState.plan;
+  matchingPlanSummary.innerHTML = `
+    <div class="matchingPlanMetric update"><strong>${summary.updates}</strong><span>Будет обновлено</span></div>
+    <div class="matchingPlanMetric skip"><strong>${summary.skipped}</strong><span>Будет пропущено</span></div>
+  `;
+  const calibratedSides = SIDES.filter(side => matchingWorkflowState.calibrations[side]);
+  matchingWorkflowDetails.textContent = `Калибровано: ${calibratedSides.join(", ") || "—"} · изменений: ${summary.updates}`;
+  matchingApplyBtn.disabled = summary.updates === 0;
+}
+function renderMatchingCalibrationStatus() {
+  if (!matchingWorkflowState) return;
+  const message = matchingWorkflowState.calibrationMessages[matchingWorkflowState.side];
+  matchingCalibrationStatus.className = "matchingCalibrationStatus";
+  if (!message) {
+    matchingCalibrationStatus.textContent = "Заполните минимум три точки и рассчитайте преобразование.";
+    return;
+  }
+  matchingCalibrationStatus.textContent = message.text;
+  matchingCalibrationStatus.classList.add(message.tone);
+}
+function renderMatchingWorkflow() {
+  if (!matchingWorkflowState) return;
+  const sides = matchingSides();
+  [matchingWorkflowTopBtn, matchingWorkflowBottomBtn].forEach(button => {
+    const side = button.dataset.matchingSide;
+    button.disabled = !sides.includes(side);
+    button.classList.toggle("active", side === matchingWorkflowState.side);
+  });
+  renderMatchingControlPoints();
+  renderMatchingCalibrationStatus();
+  renderMatchingPlanSummary();
+  renderMatchingPreview();
+}
+function rebuildMatchingPlan() {
+  if (!matchingWorkflowState) return;
+  matchingWorkflowState.plan = createMatchingApplicationPlan({
+    components:project.components,
+    imageSizes:project.imageSizes,
+    session:pendingMatchingRun.session,
+    calibrations:matchingWorkflowState.calibrations
+  });
+}
+function fitCurrentMatchingSide() {
+  if (!matchingWorkflowState) return;
+  const side = matchingWorkflowState.side;
+  try {
+    const calibration = fitSideCalibration({
+      side,
+      rows:matchingWorkflowState.rows[side],
+      maxResidualPx:matchingResidualLimit.value
+    });
+    matchingWorkflowState.calibrations[side] = calibration;
+    matchingWorkflowState.calibrationMessages[side] = {
+      tone:"success",
+      text:[
+        `Калибровка принята: ${calibration.controlPointCount} точек.`,
+        `RMS ${matchingNumber(calibration.rmsResidualPx)} px; максимум ${matchingNumber(calibration.maxResidualPx)} px.`,
+        calibration.mirrored ? "Преобразование зеркальное." : "Преобразование без отражения."
+      ].join("\n")
+    };
+    matchingWorkflowState.pickingIndex = null;
+    rebuildMatchingPlan();
+    renderMatchingWorkflow();
+  } catch (error) {
+    invalidateMatchingSide(side);
+    matchingWorkflowState.calibrationMessages[side] = {
+      tone:"error",
+      text:`Калибровка отклонена: ${error?.message || "проверьте точки"}`
+    };
+    renderMatchingWorkflow();
+  }
+}
+function invalidateMatchingSide(side) {
+  if (!matchingWorkflowState) return;
+  delete matchingWorkflowState.calibrations[side];
+  matchingWorkflowState.plan = Object.keys(matchingWorkflowState.calibrations).length
+    ? createMatchingApplicationPlan({
+      components:project.components,
+      imageSizes:project.imageSizes,
+      session:pendingMatchingRun.session,
+      calibrations:matchingWorkflowState.calibrations
+    })
+    : null;
+  matchingWorkflowState.calibrationMessages[side] = "";
+}
+function setMatchingSide(side) {
+  if (!matchingWorkflowState || !matchingSides().includes(side)) return;
+  matchingWorkflowState.side = side;
+  matchingWorkflowState.pickingIndex = null;
+  renderMatchingWorkflow();
+}
+function pickMatchingPreviewPoint(event) {
+  if (!matchingWorkflowState || !Number.isInteger(matchingWorkflowState.pickingIndex)) return;
+  const side = matchingWorkflowState.side;
+  const size = project.imageSizes[side] || DEFAULT_IMAGE_SIZES[side];
+  const rect = matchingPreviewStage.getBoundingClientRect();
+  if (!rect.width || !rect.height) return;
+  const row = matchingWorkflowState.rows[side][matchingWorkflowState.pickingIndex];
+  row.pixel = {
+    x:Math.max(0, Math.min(size.w, Math.round((event.clientX - rect.left) * size.w / rect.width * 10) / 10)),
+    y:Math.max(0, Math.min(size.h, Math.round((event.clientY - rect.top) * size.h / rect.height * 10) / 10))
+  };
+  matchingWorkflowState.pickingIndex = null;
+  invalidateMatchingSide(side);
+  renderMatchingWorkflow();
+}
+async function applyMatchingWorkflow() {
+  const plan = matchingWorkflowState?.plan;
+  if (!plan || plan.summary.updates === 0) return;
+  const confirmed = await openConfirmDialog({
+    title:`Применить ${plan.summary.updates} изменений?`,
+    text:`Положение компонентов будет обновлено по предпросмотру. Пропущено результатов: ${plan.summary.skipped}.`,
+    action:"Применить"
+  });
+  if (!confirmed) return;
+  try {
+    pushUndoState();
+    project.components = applyMatchingApplicationPlan(project.components, plan);
+    if (!await saveProjectNow()) {
+      renderAll();
+      closeMatchingWorkflow(false);
+      matchingModal.hidden = true;
+      notify("Изменения применены в памяти, но проект не удалось сохранить.", "warning");
+      return;
+    }
+    matchingStatus.className = "";
+    matchingStatus.textContent = `${pendingMatchingRun.sourceName} · применено ${plan.summary.updates}`;
+    matchingWorkflowState = null;
+    closeMatchingWorkflow(false);
+    matchingModal.hidden = true;
+    renderAll();
+    notify(`Обновлено компонентов: ${plan.summary.updates}.`, "success");
+  } catch (error) {
+    undoStack.pop();
+    console.error(error);
+    notify(`Предпросмотр устарел: ${error?.message || "пересчитайте план"}`, "warning");
   }
 }
 async function applyBomUpdate() {
@@ -1929,6 +2257,62 @@ matchingFileInput.addEventListener("change", async () => {
 matchingCloseBtn.addEventListener("click", closeMatchingResults);
 matchingDoneBtn.addEventListener("click", closeMatchingResults);
 matchingBackdrop.addEventListener("click", closeMatchingResults);
+matchingCalibrateBtn.addEventListener("click", openMatchingWorkflow);
+matchingWorkflowCloseBtn.addEventListener("click", () => closeMatchingWorkflow());
+matchingWorkflowCancelBtn.addEventListener("click", () => closeMatchingWorkflow());
+matchingWorkflowBackdrop.addEventListener("click", () => closeMatchingWorkflow());
+matchingWorkflowTopBtn.addEventListener("click", () => setMatchingSide("TOP"));
+matchingWorkflowBottomBtn.addEventListener("click", () => setMatchingSide("BOTTOM"));
+matchingFitBtn.addEventListener("click", fitCurrentMatchingSide);
+matchingAddPointBtn.addEventListener("click", () => {
+  if (!matchingWorkflowState) return;
+  const side = matchingWorkflowState.side;
+  const rows = matchingWorkflowState.rows[side];
+  rows.push({
+    id:`manual:${side}:${Date.now()}`,
+    label:`Точка ${rows.length + 1}`,
+    mm:{x:null, y:null},
+    pixel:{x:null, y:null}
+  });
+  invalidateMatchingSide(side);
+  renderMatchingWorkflow();
+});
+matchingControlPoints.addEventListener("click", event => {
+  if (!matchingWorkflowState) return;
+  const pick = event.target.closest("[data-pick-matching-point]");
+  if (pick) {
+    const index = Number(pick.dataset.pickMatchingPoint);
+    matchingWorkflowState.pickingIndex = matchingWorkflowState.pickingIndex === index ? null : index;
+    renderMatchingWorkflow();
+    return;
+  }
+  const remove = event.target.closest("[data-remove-matching-point]");
+  if (!remove || remove.disabled) return;
+  const side = matchingWorkflowState.side;
+  matchingWorkflowState.rows[side].splice(Number(remove.dataset.removeMatchingPoint), 1);
+  matchingWorkflowState.pickingIndex = null;
+  invalidateMatchingSide(side);
+  renderMatchingWorkflow();
+});
+matchingControlPoints.addEventListener("change", event => {
+  if (!matchingWorkflowState || !event.target.matches("[data-matching-index]")) return;
+  const side = matchingWorkflowState.side;
+  const row = matchingWorkflowState.rows[side][Number(event.target.dataset.matchingIndex)];
+  const group = event.target.dataset.matchingGroup;
+  const axis = event.target.dataset.matchingAxis;
+  row[group][axis] = event.target.value;
+  invalidateMatchingSide(side);
+  renderMatchingCalibrationStatus();
+  renderMatchingPlanSummary();
+  renderMatchingPreview();
+});
+matchingResidualLimit.addEventListener("change", () => {
+  if (!matchingWorkflowState) return;
+  SIDES.forEach(invalidateMatchingSide);
+  renderMatchingWorkflow();
+});
+matchingPreviewStage.addEventListener("click", pickMatchingPreviewPoint);
+matchingApplyBtn.addEventListener("click", applyMatchingWorkflow);
 bomCloseBtn.addEventListener("click", closeBomModal);
 bomCancelBtn.addEventListener("click", closeBomModal);
 bomBackdrop.addEventListener("click", closeBomModal);
@@ -2037,6 +2421,11 @@ document.getElementById("clearVisibleDone").addEventListener("click", () => {
   renderAll();
 });
 window.addEventListener("keydown", ev => {
+  if (ev.key === "Escape" && !matchingWorkflowModal.hidden) {
+    ev.preventDefault();
+    closeMatchingWorkflow();
+    return;
+  }
   if (ev.key === "Escape" && !matchingModal.hidden) {
     ev.preventDefault();
     closeMatchingResults();
